@@ -97,7 +97,8 @@ let state = {
   selectedDate: null, // string 'YYYY-MM-DD'
   bestStreak: 0,
   theme: 'light',
-  currentTab: 'calendar-view'
+  currentTab: 'calendar-view',
+  currentUser: null
 };
 
 const MONTH_NAMES = [
@@ -111,68 +112,63 @@ const MONTH_NAMES = [
 
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
-  initSupabaseClient();
   setupTheme();
   setupNavigation();
   setupMobileNavigation();
   initDateDisplays();
   renderAll();
   setupEventListeners();
-  setupCloudSyncForm();
   initConfetti();
-
-  if (supabaseClient) {
-    syncFromCloud();
-  }
+  setupAuthForm();
+  updateAuthUI();
 });
 
 // Load data from LocalStorage
 function loadData() {
-  const savedTasks = localStorage.getItem('zenflow_monthly_tasks');
-  const savedBestStreak = localStorage.getItem('zenflow_best_streak');
-  const savedTheme = localStorage.getItem('zenflow_theme');
+  const savedUser = localStorage.getItem('dayknot_current_user');
+  state.currentUser = savedUser || null;
 
-  if (savedTasks) {
-    state.tasks = JSON.parse(savedTasks);
-    // Backward compatibility check (make sure tasks have activeDays and completedDates arrays)
-    state.tasks.forEach(t => {
-      if (!t.activeDays) t.activeDays = [0, 1, 2, 3, 4, 5, 6];
-      if (!t.completedDates) t.completedDates = [];
-    });
-  } else {
-    // Check if there are tasks from the daily version to migrate
-    const legacyTasks = localStorage.getItem('zenflow_tasks');
-    if (legacyTasks) {
-      state.tasks = JSON.parse(legacyTasks);
+  // Load tasks specific to the current active user (local cache)
+  if (state.currentUser) {
+    const userTasksKey = `dayknot_tasks_${state.currentUser}`;
+    const userBestStreakKey = `dayknot_best_streak_${state.currentUser}`;
+    
+    const savedTasks = localStorage.getItem(userTasksKey);
+    const savedBestStreak = localStorage.getItem(userBestStreakKey);
+    
+    if (savedTasks) {
+      state.tasks = JSON.parse(savedTasks);
+      state.tasks.forEach(t => {
+        if (!t.activeDays) t.activeDays = [0, 1, 2, 3, 4, 5, 6];
+        if (!t.completedDates) t.completedDates = [];
+      });
     } else {
-      state.tasks = DEFAULT_TASKS;
+      state.tasks = DEFAULT_TASKS.map(t => ({ ...t, completedDates: [] }));
+      saveTasks();
     }
-    saveTasks();
-  }
-
-  if (savedBestStreak) {
-    state.bestStreak = parseInt(savedBestStreak, 10);
+    
+    state.bestStreak = savedBestStreak ? parseInt(savedBestStreak, 10) : 0;
   } else {
+    state.tasks = [];
     state.bestStreak = 0;
-    saveBestStreak();
   }
 
-  if (savedTheme) {
-    state.theme = savedTheme;
-  } else {
-    state.theme = 'light'; // Light theme is default
-  }
-
-  // Set selected date to today by default
+  state.theme = 'light';
   state.selectedDate = formatDateString(new Date());
 }
 
 function saveTasks() {
-  localStorage.setItem('zenflow_monthly_tasks', JSON.stringify(state.tasks));
+  if (state.currentUser) {
+    const userTasksKey = `dayknot_tasks_${state.currentUser}`;
+    localStorage.setItem(userTasksKey, JSON.stringify(state.tasks));
+  }
 }
 
 function saveBestStreak() {
-  localStorage.setItem('zenflow_best_streak', state.bestStreak);
+  if (state.currentUser) {
+    const userBestStreakKey = `dayknot_best_streak_${state.currentUser}`;
+    localStorage.setItem(userBestStreakKey, state.bestStreak);
+  }
 }
 
 // Theme setup
@@ -765,12 +761,12 @@ function toggleTaskStatus(taskId, dateStr) {
   if (idx > -1) {
     // Uncheck completion
     task.completedDates.splice(idx, 1);
-    cloudRemoveCompletion(taskId, dateStr);
+    atlasRemoveCompletion(taskId, dateStr);
   } else {
     // Check completion
     task.completedDates.push(dateStr);
     checked = true;
-    cloudAddCompletion(taskId, dateStr);
+    atlasAddCompletion(taskId, dateStr);
     
     // Confetti pop!
     triggerTaskCelebration();
@@ -1017,7 +1013,7 @@ function handleFormSubmit(e) {
       task.title = title;
       task.priority = priority;
       task.activeDays = checkedDays;
-      cloudUpdateTask(task);
+      atlasUpdateTask(task);
     }
   } else {
     // Add new task template
@@ -1030,7 +1026,7 @@ function handleFormSubmit(e) {
       completedDates: []
     };
     state.tasks.push(newTask);
-    cloudCreateTask(newTask);
+    atlasCreateTask(newTask);
   }
 
   saveTasks();
@@ -1041,7 +1037,7 @@ function handleFormSubmit(e) {
 function deleteTemplateTask(id) {
   state.tasks = state.tasks.filter(t => t.id !== id);
   saveTasks();
-  cloudDeleteTask(id);
+  atlasDeleteTask(id);
   renderAll();
 }
 
@@ -1232,227 +1228,253 @@ function animateConfetti() {
 }
 
 // ==========================================================================
-// SUPABASE SYNC SYSTEM
+// BACKEND API CLIENT (calls Vercel serverless /api/* routes)
 // ==========================================================================
 
-let supabaseClient = null;
-
-function initSupabaseClient() {
-  const url = localStorage.getItem('zenflow_supabase_url');
-  const key = localStorage.getItem('zenflow_supabase_key');
-  if (url && key) {
-    try {
-      supabaseClient = window.supabase.createClient(url, key);
-      updateSyncUI('connected');
-      return true;
-    } catch (err) {
-      console.error('Error creating Supabase client:', err);
-      updateSyncUI('error');
-      return false;
-    }
-  }
-  updateSyncUI('disconnected');
-  return false;
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function apiPost(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  return data;
+}
+
+async function apiDelete(path, body) {
+  const res = await fetch(path, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  return data;
+}
+
+async function apiPut(path, body) {
+  const res = await fetch(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  return data;
+}
+
+// ── Task sync helpers ──────────────────────────────────────────────────────
+
 async function syncFromCloud() {
-  if (!supabaseClient) return;
-  updateSyncUI('syncing');
-
+  if (!state.currentUser) return;
   try {
-    const { data: cloudTasks, error: taskErr } = await supabaseClient
-      .from('tasks')
-      .select('*');
+    const res = await fetch(`/api/sync?userId=${encodeURIComponent(state.currentUser)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
 
-    if (taskErr) throw taskErr;
+    const { tasks: cloudTasks, completions: cloudCompletions } = data;
 
-    const { data: completionsData, error: compErr } = await supabaseClient
-      .from('completions')
-      .select('task_id, completed_date');
-
-    if (compErr) throw compErr;
-
-    if (cloudTasks && cloudTasks.length > 0) {
+    if (cloudTasks.length > 0) {
       state.tasks = cloudTasks.map(t => ({
-        id: t.id,
+        id: t._id,
         title: t.title,
         priority: t.priority,
-        category: 'morning', // Legacy fallback compatibility field
-        activeDays: t.active_days || [0, 1, 2, 3, 4, 5, 6],
-        completedDates: completionsData
-          ? completionsData.filter(c => c.task_id === t.id).map(c => c.completed_date)
-          : []
+        category: 'morning',
+        activeDays: t.activeDays || [0, 1, 2, 3, 4, 5, 6],
+        completedDates: cloudCompletions
+          .filter(c => c.taskId === t._id)
+          .map(c => c.completedDate),
       }));
-      
       saveTasks();
       renderAll();
     } else {
-      await pushAllTasksToCloud();
-    }
-    updateSyncUI('connected');
-  } catch (err) {
-    console.error('Error syncing from cloud:', err);
-    updateSyncUI('error');
-  }
-}
-
-async function pushAllTasksToCloud() {
-  if (!supabaseClient || state.tasks.length === 0) return;
-  try {
-    const tasksToUpload = state.tasks.map(t => ({
-      id: t.id,
-      title: t.title,
-      priority: t.priority,
-      active_days: t.activeDays
-    }));
-
-    const { error: taskErr } = await supabaseClient
-      .from('tasks')
-      .upsert(tasksToUpload);
-
-    if (taskErr) throw taskErr;
-
-    const completionsToUpload = [];
-    state.tasks.forEach(t => {
-      t.completedDates.forEach(date => {
-        completionsToUpload.push({
-          task_id: t.id,
-          completed_date: date
-        });
-      });
-    });
-
-    if (completionsToUpload.length > 0) {
-      const { error: compErr } = await supabaseClient
-        .from('completions')
-        .upsert(completionsToUpload);
-      if (compErr) throw compErr;
+      // First login — push local default tasks to cloud
+      await pushLocalTasksToCloud();
     }
   } catch (err) {
-    console.error('Failed to initialize cloud database:', err);
+    console.error('Cloud sync failed:', err);
   }
 }
 
-async function cloudCreateTask(task) {
-  if (!supabaseClient) return;
+async function pushLocalTasksToCloud() {
+  if (!state.currentUser || state.tasks.length === 0) return;
   try {
-    await supabaseClient.from('tasks').insert({
-      id: task.id,
-      title: task.title,
-      priority: task.priority,
-      active_days: task.activeDays
+    for (const task of state.tasks) {
+      await apiPost('/api/tasks', { userId: state.currentUser, task });
+    }
+  } catch (err) {
+    console.error('Failed to push tasks to cloud:', err);
+  }
+}
+
+async function atlasCreateTask(task) {
+  if (!state.currentUser) return;
+  try {
+    await apiPost('/api/tasks', { userId: state.currentUser, task });
+  } catch (err) {
+    console.error('Create task error:', err);
+  }
+}
+
+async function atlasUpdateTask(task) {
+  if (!state.currentUser) return;
+  try {
+    await apiPut('/api/tasks', {
+      userId: state.currentUser,
+      taskId: task.id,
+      updates: { title: task.title, priority: task.priority, activeDays: task.activeDays },
     });
   } catch (err) {
-    console.error('Cloud create task error:', err);
+    console.error('Update task error:', err);
   }
 }
 
-async function cloudUpdateTask(task) {
-  if (!supabaseClient) return;
+async function atlasDeleteTask(taskId) {
+  if (!state.currentUser) return;
   try {
-    await supabaseClient.from('tasks').update({
-      title: task.title,
-      priority: task.priority,
-      active_days: task.activeDays
-    }).eq('id', task.id);
+    const res = await fetch(`/api/tasks?taskId=${encodeURIComponent(taskId)}&userId=${encodeURIComponent(state.currentUser)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(await res.text());
   } catch (err) {
-    console.error('Cloud update task error:', err);
+    console.error('Delete task error:', err);
   }
 }
 
-async function cloudDeleteTask(taskId) {
-  if (!supabaseClient) return;
+async function atlasAddCompletion(taskId, dateStr) {
+  if (!state.currentUser) return;
   try {
-    await supabaseClient.from('tasks').delete().eq('id', taskId);
-  } catch (err) {
-    console.error('Cloud delete task error:', err);
-  }
-}
-
-async function cloudAddCompletion(taskId, dateStr) {
-  if (!supabaseClient) return;
-  try {
-    await supabaseClient.from('completions').insert({
-      task_id: taskId,
-      completed_date: dateStr
+    await apiPost('/api/completions', {
+      userId: state.currentUser,
+      taskId,
+      completedDate: dateStr,
     });
   } catch (err) {
-    console.error('Cloud add completion error:', err);
+    console.error('Add completion error:', err);
   }
 }
 
-async function cloudRemoveCompletion(taskId, dateStr) {
-  if (!supabaseClient) return;
+async function atlasRemoveCompletion(taskId, dateStr) {
+  if (!state.currentUser) return;
   try {
-    await supabaseClient.from('completions').delete().eq('task_id', taskId).eq('completed_date', dateStr);
+    await apiDelete('/api/completions', {
+      userId: state.currentUser,
+      taskId,
+      completedDate: dateStr,
+    });
   } catch (err) {
-    console.error('Cloud remove completion error:', err);
+    console.error('Remove completion error:', err);
   }
 }
 
-function setupCloudSyncForm() {
-  const form = document.getElementById('supabase-config-form');
-  if (!form) return;
+// ==========================================================================
+// AUTHENTICATION FORM SETUP
+// ==========================================================================
 
-  const urlInput = document.getElementById('supabase-url-input');
-  const keyInput = document.getElementById('supabase-key-input');
-  const btnDisconnect = document.getElementById('btn-sync-disconnect');
+function setupAuthForm() {
+  const form = document.getElementById('auth-form');
+  const tabLogin = document.getElementById('tab-login');
+  const tabSignup = document.getElementById('tab-signup');
+  const btnSubmit = document.getElementById('btn-auth-submit');
+  const errorMsg = document.getElementById('auth-error-msg');
+  const usernameInput = document.getElementById('auth-username');
+  const passwordInput = document.getElementById('auth-password');
+  const btnSignOut = document.getElementById('btn-sign-out');
+  const btnMobileSignOut = document.getElementById('btn-mobile-sign-out');
 
-  urlInput.value = localStorage.getItem('zenflow_supabase_url') || '';
-  keyInput.value = localStorage.getItem('zenflow_supabase_key') || '';
+  let authMode = 'login';
 
-  if (supabaseClient) {
-    btnDisconnect.style.display = 'block';
-  }
+  tabLogin && tabLogin.addEventListener('click', () => {
+    authMode = 'login';
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+    btnSubmit.textContent = 'Sign In';
+    errorMsg.style.display = 'none';
+  });
 
-  form.addEventListener('submit', async (e) => {
+  tabSignup && tabSignup.addEventListener('click', () => {
+    authMode = 'signup';
+    tabSignup.classList.add('active');
+    tabLogin.classList.remove('active');
+    btnSubmit.textContent = 'Create Account';
+    errorMsg.style.display = 'none';
+  });
+
+  form && form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const url = urlInput.value.trim();
-    const key = keyInput.value.trim();
+    const username = usernameInput.value.trim().toLowerCase();
+    const password = passwordInput.value.trim();
+    if (!username || !password) return;
 
-    if (!url || !key) return;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = authMode === 'login' ? 'Signing In…' : 'Creating Account…';
+    errorMsg.style.display = 'none';
 
-    localStorage.setItem('zenflow_supabase_url', url);
-    localStorage.setItem('zenflow_supabase_key', key);
+    try {
+      const passwordHash = await hashPassword(password);
+      await apiPost('/api/auth', { action: authMode, username, passwordHash });
 
-    const success = initSupabaseClient();
-    if (success) {
-      btnDisconnect.style.display = 'block';
+      state.currentUser = username;
+      localStorage.setItem('dayknot_current_user', username);
+
+      usernameInput.value = '';
+      passwordInput.value = '';
+
+      loadData();
+      updateAuthUI();
+      renderAll();
+
+      // Sync data from cloud after login
       await syncFromCloud();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
     }
   });
 
-  btnDisconnect.addEventListener('click', () => {
-    localStorage.removeItem('zenflow_supabase_url');
-    localStorage.removeItem('zenflow_supabase_key');
-    urlInput.value = '';
-    keyInput.value = '';
-    btnDisconnect.style.display = 'none';
-    supabaseClient = null;
-    updateSyncUI('disconnected');
-    
-    // Reload local tasks
-    loadData();
+  const performSignOut = () => {
+    localStorage.removeItem('dayknot_current_user');
+    state.currentUser = null;
+    state.tasks = [];
+    state.bestStreak = 0;
+    updateAuthUI();
     renderAll();
-  });
+    const drawer = document.getElementById('side-nav-drawer');
+    if (drawer) drawer.classList.remove('active');
+  };
+
+  btnSignOut && btnSignOut.addEventListener('click', performSignOut);
+  btnMobileSignOut && btnMobileSignOut.addEventListener('click', performSignOut);
 }
 
-function updateSyncUI(status) {
-  const badge = document.getElementById('sync-status-badge');
-  if (!badge) return;
+function updateAuthUI() {
+  const overlay = document.getElementById('auth-overlay');
+  const userDisplayName = document.getElementById('user-display-name');
+  const sideDrawerUsername = document.getElementById('side-drawer-username');
+  const modeDot = document.querySelector('.auth-mode-indicator .mode-dot');
+  const modeText = document.querySelector('.auth-mode-indicator .mode-text');
 
-  badge.className = 'status-badge';
-  if (status === 'connected') {
-    badge.classList.add('status-perfect');
-    badge.textContent = 'Connected ✅';
-  } else if (status === 'syncing') {
-    badge.classList.add('status-progress');
-    badge.textContent = 'Syncing 🔄';
-  } else if (status === 'error') {
-    badge.classList.add('status-empty');
-    badge.textContent = 'Connection Error ❌';
+  // Always cloud-connected now
+  if (modeDot) modeDot.className = 'mode-dot online';
+  if (modeText) modeText.textContent = 'Cloud Sync — MongoDB Atlas';
+
+  if (state.currentUser) {
+    overlay && overlay.classList.add('inactive');
+    if (userDisplayName) userDisplayName.textContent = state.currentUser;
+    if (sideDrawerUsername) sideDrawerUsername.textContent = state.currentUser;
   } else {
-    badge.classList.add('status-rest');
-    badge.textContent = 'Disconnected';
+    overlay && overlay.classList.remove('inactive');
   }
 }
+

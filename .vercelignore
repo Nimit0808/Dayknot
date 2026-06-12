@@ -1,0 +1,8 @@
+# Never deploy the local secret — set MONGODB_URI in Vercel dashboard instead
+.env
+
+# Dependencies are installed fresh on Vercel
+node_modules/
+
+# macOS metadata
+.DS_Store

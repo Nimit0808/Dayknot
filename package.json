@@ -1,0 +1,8 @@
+{
+  "name": "dayknot",
+  "version": "1.0.0",
+  "description": "Dayknot - Monthly Routine & Habit Tracker",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}

@@ -18,6 +18,42 @@
   <!-- Confetti Canvas -->
   <canvas id="confetti-canvas"></canvas>
 
+  <!-- Fullscreen Auth Screen Overlay -->
+  <div id="auth-overlay" class="auth-overlay active">
+    <div class="auth-card glass">
+      <div class="auth-logo">
+        <span class="logo-icon">➰</span>
+        <h2>Dayknot</h2>
+        <p class="auth-subtitle">Monthly Routine & Habit Tracker</p>
+      </div>
+      
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab-btn active" type="button">Sign In</button>
+        <button id="tab-signup" class="auth-tab-btn" type="button">Create Account</button>
+      </div>
+
+      <form id="auth-form" class="auth-form">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="auth-username" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Username</label>
+          <input type="text" id="auth-username" required placeholder="Enter username..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+        </div>
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="auth-password" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Password</label>
+          <input type="password" id="auth-password" required placeholder="Enter password..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+        </div>
+        
+        <div id="auth-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+
+        <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Sign In</button>
+      </form>
+
+      <div id="auth-mode-indicator" class="auth-mode-indicator" style="margin-top: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
+        <span class="mode-dot offline" style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block;"></span>
+        <span class="mode-text">Local-only Mode (configure database in app settings to sync)</span>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Header -->
     <header class="app-header">
@@ -45,6 +81,21 @@
         <button id="btn-next-month" class="btn-month-nav" title="Next Month">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
+      </div>
+
+      <!-- User Profile Badge (Header Right) -->
+      <div class="header-right">
+        <div class="user-profile-badge glass">
+          <span class="user-avatar">👤</span>
+          <span id="user-display-name">Guest</span>
+          <button id="btn-sign-out" class="btn-sign-out" title="Sign Out">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </div>
 
     </header>
@@ -185,38 +236,6 @@
               <span class="plus">+</span> Add Routine Task
             </button>
           </div>
-
-          <!-- Divider -->
-          <div class="section-divider"></div>
-
-          <!-- Supabase Cloud Sync Section -->
-          <div class="sync-column">
-            <div class="column-header">
-              <div class="title-with-icon">
-                <span class="column-icon">☁️</span>
-                <h2>Supabase Cloud Sync</h2>
-              </div>
-              <span id="sync-status-badge" class="status-badge status-rest">Disconnected</span>
-            </div>
-            
-            <p class="sync-description" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.4;">
-              Sync your routine tasks and habit completions in real-time across devices by connecting your Supabase project database.
-            </p>
-
-            <form id="supabase-config-form" class="sync-form">
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label for="supabase-url-input" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Supabase Project URL</label>
-                <input type="url" id="supabase-url-input" placeholder="https://your-project.supabase.co" autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
-              </div>
-              <div class="form-group" style="margin-bottom: 1.25rem;">
-                <label for="supabase-key-input" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Supabase Anon API Key</label>
-                <input type="password" id="supabase-key-input" placeholder="your-anon-api-key-here" autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
-              </div>
-              <div class="sync-actions" style="display: flex; gap: 0.75rem;">
-                <button type="button" id="btn-sync-disconnect" class="btn btn-secondary" style="display: none; flex: 1;">Disconnect</button>
-                <button type="submit" id="btn-sync-save" class="btn btn-primary" style="flex: 1;">Connect & Save</button>
-              </div>
-            </form>
           </div>
         </div>
       </section>
@@ -295,6 +314,14 @@
         <div class="side-drawer-item" data-target="configure-view">
           <span class="side-drawer-icon">⚙️</span> Configure Routine
         </div>
+        <div class="side-drawer-divider" style="height: 1px; background: var(--card-border); margin: 1.5rem 0;"></div>
+        <div class="side-drawer-profile" style="display: flex; align-items: center; gap: 0.75rem; padding: 0 0.5rem; margin-bottom: 1rem;">
+          <span class="profile-avatar" style="font-size: 1.25rem;">👤</span>
+          <span id="side-drawer-username" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">Guest</span>
+        </div>
+        <button id="btn-mobile-sign-out" class="btn btn-secondary" style="width: 100%; padding: 0.65rem; border-radius: 10px; font-weight: 600;">
+          Sign Out
+        </button>
       </div>
     </div>
   </div>
@@ -367,8 +394,6 @@
     </div>
   </div>
 
-  <!-- Supabase CDN Client Script -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- JavaScript logic file -->
   <script defer src="app.js"></script>
