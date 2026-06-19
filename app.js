@@ -1881,7 +1881,7 @@ function setupAuthForm() {
 
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Authenticating...';
-    errorMsg.style.display = 'none';
+    errorMsg.style.visibility = 'hidden';
 
     try {
       const res = await apiPost('/api/auth', { action: 'google', credential });
@@ -1905,7 +1905,7 @@ function setupAuthForm() {
       await syncFromCloud();
     } catch (err) {
       errorMsg.textContent = err.message || 'Google Sign-In failed';
-      errorMsg.style.display = 'block';
+      errorMsg.style.visibility = 'visible';
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
@@ -1955,7 +1955,7 @@ function setupAuthForm() {
     tabLogin.classList.add('active');
     tabSignup.classList.remove('active');
     btnSubmit.textContent = 'Sign In';
-    errorMsg.style.display = 'none';
+    errorMsg.style.visibility = 'hidden';
     if (emailGroup) emailGroup.style.display = 'none';
     if (emailInput) emailInput.required = false;
     if (usernameLabel) usernameLabel.textContent = 'Email or Username';
@@ -1966,7 +1966,7 @@ function setupAuthForm() {
     tabSignup.classList.add('active');
     tabLogin.classList.remove('active');
     btnSubmit.textContent = 'Create Account';
-    errorMsg.style.display = 'none';
+    errorMsg.style.visibility = 'hidden';
     if (emailGroup) emailGroup.style.display = 'block';
     if (emailInput) emailInput.required = true;
     if (usernameLabel) usernameLabel.textContent = 'Display Name (Username)';
@@ -1981,8 +1981,8 @@ function setupAuthForm() {
     if (!username || !password || (authMode === 'signup' && !email)) return;
 
     btnSubmit.disabled = true;
-    btnSubmit.textContent = authMode === 'login' ? 'Signing In…' : 'Creating Account…';
-    errorMsg.style.display = 'none';
+    btnSubmit.textContent = authMode === 'login' ? 'Signing In...' : 'Creating Account...';
+    errorMsg.style.visibility = 'hidden';
 
     try {
       const passwordHash = await hashPassword(password);
@@ -2023,7 +2023,7 @@ function setupAuthForm() {
       await syncFromCloud();
     } catch (err) {
       errorMsg.textContent = err.message;
-      errorMsg.style.display = 'block';
+      errorMsg.style.visibility = 'visible';
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';

@@ -15,7 +15,7 @@
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=optional" rel="stylesheet">
   
   <!-- CSS Styles -->
   <link rel="stylesheet" href="styles.css">
@@ -63,7 +63,7 @@
           <label for="auth-remember-me" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; user-select: none;">Remember me on this device for a month</label>
         </div>
         
-        <div id="auth-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+        <div id="auth-error-msg" class="auth-error-msg" style="visibility: hidden; min-height: 1.25rem; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
 
         <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Sign In</button>
         
