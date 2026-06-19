@@ -561,13 +561,22 @@ function calculateStreak() {
 // ==========================================================================
 
 function renderAll() {
+  // Render critical visible paths instantly
   renderStatsWidgets();
   renderCalendarGrid();
-  renderHabitMatrix();
-  renderHistoryTable();
-  renderConfigurationView();
-  renderDrawer();
-  renderAnalyticsDashboard();
+
+  // Defer non-visible tabs to reduce initial blocking time (Long Task optimization)
+  setTimeout(() => {
+    renderHabitMatrix();
+    setTimeout(() => {
+      renderHistoryTable();
+      setTimeout(() => {
+        renderConfigurationView();
+        renderDrawer();
+        renderAnalyticsDashboard();
+      }, 0);
+    }, 0);
+  }, 0);
 }
 
 // Render Global Stat Widgets
