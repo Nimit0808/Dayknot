@@ -98,7 +98,7 @@ const MONTH_NAMES = [
 // APP INITIALIZATION
 // ==========================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadData();
   setupTheme();
   setupNavigation();
@@ -109,6 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initConfetti();
   setupAuthForm();
   updateAuthUI();
+  
+  // Auto-sync data if logged in
+  if (state.currentUser) {
+    await syncFromCloud();
+  }
 });
 
 // Load data from LocalStorage
@@ -1965,7 +1970,11 @@ function setupAuthForm() {
     localStorage.removeItem('dayknot_current_user');
     localStorage.removeItem('dayknot_auth');
     sessionStorage.removeItem('dayknot_current_user');
+    sessionStorage.removeItem('dayknot_picture');
+    sessionStorage.removeItem('dayknot_theme');
+    sessionStorage.removeItem('dayknot_accent');
     state.currentUser = null;
+    state.picture = null;
     state.tasks = [];
     state.bestStreak = 0;
     updateAuthUI();
