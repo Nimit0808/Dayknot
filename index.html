@@ -25,6 +25,20 @@
   
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- OneSignal Web SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "0b9d40da-87af-421b-9554-72c07105971c",
+        notifyButton: {
+          enable: false, // We use custom buttons
+        },
+        allowLocalhostAsSecureOrigin: true
+      });
+    });
+  </script>
 </head>
 <body>
   <!-- Confetti Canvas -->

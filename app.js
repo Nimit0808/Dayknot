@@ -113,7 +113,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Auto-sync data if logged in
   if (state.currentUser) {
     await syncFromCloud();
-    initReminderEngine();
+    // Login to OneSignal using the custom dayknot username
+    if (window.OneSignalDeferred) {
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.login(state.currentUser);
+      });
+    }
   }
 });
 
@@ -170,77 +175,7 @@ function showToastNotification(title, message) {
   }, 5000);
 }
 
-function initReminderEngine() {
-  if (reminderIntervalId) clearInterval(reminderIntervalId);
-  
-  // Check every minute
-  reminderIntervalId = setInterval(() => {
-    checkReminders();
-  }, 60000);
-  
-  // Initial check on load
-  checkReminders();
-}
-
-function checkReminders() {
-  if (!state.currentUser || state.tasks.length === 0) return;
-
-  const now = new Date();
-  const currentDayOfWeek = now.getDay();
-  const currentHour = now.getHours().toString().padStart(2, '0');
-  const currentMinute = now.getMinutes().toString().padStart(2, '0');
-  const currentTimeStr = `${currentHour}:${currentMinute}`;
-  
-  const todayStr = formatDateString(now);
-
-  // We use localStorage to track if a notification was already sent today for a task
-  // to avoid spamming the user every minute during the reminder time.
-  const notifiedTasksKey = `dayknot_notified_${state.currentUser}_${todayStr}`;
-  let notifiedTasks = [];
-  try {
-    notifiedTasks = JSON.parse(localStorage.getItem(notifiedTasksKey)) || [];
-  } catch(e) {}
-
-  let updatedNotified = false;
-
-  state.tasks.forEach(task => {
-    if (!task.reminderEnabled || !task.reminderTime) return;
-    if (!task.activeDays.includes(currentDayOfWeek)) return;
-    if (task.completedDates.includes(todayStr)) return; // Already done
-    
-    // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
-    if (currentTimeStr >= task.reminderTime) {
-      if (!notifiedTasks.includes(task.id)) {
-        // ALWAYS show in-app toast
-        showToastNotification("Dayknot Reminder", `It's time to: ${task.title}`);
-
-        // Try native notification
-        if ("Notification" in window && Notification.permission === "granted") {
-          if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(registration => {
-              registration.showNotification("Dayknot Reminder", {
-                body: `It's time to: ${task.title}`,
-                icon: "/icon.svg",
-                badge: "/icon.svg"
-              }).catch(() => {
-                try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
-              });
-            });
-          } else {
-            try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
-          }
-        }
-        
-        notifiedTasks.push(task.id);
-        updatedNotified = true;
-      }
-    }
-  });
-
-  if (updatedNotified) {
-    localStorage.setItem(notifiedTasksKey, JSON.stringify(notifiedTasks));
-  }
-}
+// Old local reminder engine removed - Now using OneSignal for reliable scheduled delivery.
 
 // Load data from LocalStorage
 function loadData() {
@@ -1162,30 +1097,25 @@ btnTestNotification.addEventListener('click', async () => {
   // Always show the in-app toast to prove the reminder works
   showToastNotification("Test Successful! 🎉", "If you see this, reminders are working correctly.");
 
-  if (!("Notification" in window)) {
-    return;
+  let permission = "default";
+  if ("Notification" in window) {
+    permission = Notification.permission;
   }
-  
-  // Force request permission on click (required for iOS)
-  let permission = Notification.permission;
-  if (permission !== 'granted') {
-    try {
-      permission = await Notification.requestPermission();
-    } catch(e) {}
+  if (permission === 'granted' || permission === 'default') {
+    // Show OneSignal prompt if they haven't subscribed yet
+    if (window.OneSignal) {
+      await window.OneSignal.Slidedown.promptPush();
+    }
   }
 
-  if (permission === 'granted') {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-      navigator.serviceWorker.ready.then(registration => {
-        registration.showNotification("Test Successful! 🎉", {
-          body: "Native notifications are working.",
-          icon: "/icon.svg"
-        }).catch(err => {
-          try { new Notification("Test Successful! 🎉", { body: "Native notifications are working.", icon: "/icon.svg" }); } catch(e) {}
-        });
-      });
-    } else {
-      try { new Notification("Test Successful! 🎉", { body: "Native notifications are working.", icon: "/icon.svg" }); } catch(e) {}
+  if (Notification.permission === 'granted') {
+    if (state.currentUser) {
+      try {
+        await apiPost('/api/test-push', { userId: state.currentUser });
+      } catch (err) {
+        console.error("Test push failed", err);
+        alert("Failed to send test push via backend.");
+      }
     }
   } else {
     alert("Native notifications are disabled. Please enable them in your browser/device settings. (The in-app Toast will still work!)");
@@ -1786,8 +1716,9 @@ async function syncFromCloud() {
 async function pushLocalTasksToCloud() {
   if (!state.currentUser || state.tasks.length === 0) return;
   try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     for (const task of state.tasks) {
-      await apiPost('/api/tasks', { userId: state.currentUser, task });
+      await apiPost('/api/tasks', { userId: state.currentUser, timezone, task });
       
       // Sync local completions to cloud
       if (task.completedDates && task.completedDates.length > 0) {
@@ -1804,7 +1735,8 @@ async function pushLocalTasksToCloud() {
 async function atlasCreateTask(task) {
   if (!state.currentUser) return;
   try {
-    await apiPost('/api/tasks', { userId: state.currentUser, task });
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    await apiPost('/api/tasks', { userId: state.currentUser, timezone, task });
   } catch (err) {
     console.error('Create task error:', err);
   }
@@ -1813,8 +1745,10 @@ async function atlasCreateTask(task) {
 async function atlasUpdateTask(task) {
   if (!state.currentUser) return;
   try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     await apiPut('/api/tasks', {
       userId: state.currentUser,
+      timezone,
       taskId: task.id,
       updates: { 
         title: task.title, 

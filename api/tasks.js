@@ -14,6 +14,9 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const { scheduleOneSignalNotification, cancelOneSignalNotification } = require('./_onesignal');
+  const { getNextOccurrenceUTC } = require('./_timezone');
+
   try {
     const db = await connectDB();
     const tasks = db.collection('tasks');
@@ -32,14 +35,22 @@ module.exports = async function handler(req, res) {
       const { userId, task } = req.body || {};
       if (!userId || !task) return res.status(400).json({ error: 'Missing fields' });
 
+      let oneSignalNotificationId = null;
+      if (task.reminderEnabled && task.reminderTime && req.body.timezone) {
+        const sendAfterStr = getNextOccurrenceUTC(req.body.timezone, task.reminderTime);
+        oneSignalNotificationId = await scheduleOneSignalNotification(userId, "Dayknot Reminder", `It's time to: ${task.title}`, sendAfterStr);
+      }
+
       await tasks.insertOne({
         _id: task.id,
         userId,
+        timezone: req.body.timezone,
         title: task.title,
         priority: task.priority,
         activeDays: task.activeDays,
         reminderEnabled: task.reminderEnabled,
         reminderTime: task.reminderTime,
+        oneSignalNotificationId,
         createdAt: new Date(),
       });
       return res.status(200).json({ success: true });
@@ -50,14 +61,27 @@ module.exports = async function handler(req, res) {
       const { userId, taskId, updates } = req.body || {};
       if (!userId || !taskId || !updates) return res.status(400).json({ error: 'Missing fields' });
 
+      const oldTask = await tasks.findOne({ _id: taskId, userId });
+      if (oldTask && oldTask.oneSignalNotificationId) {
+        await cancelOneSignalNotification(oldTask.oneSignalNotificationId);
+      }
+
+      let oneSignalNotificationId = null;
+      if (updates.reminderEnabled && updates.reminderTime && req.body.timezone) {
+        const sendAfterStr = getNextOccurrenceUTC(req.body.timezone, updates.reminderTime);
+        oneSignalNotificationId = await scheduleOneSignalNotification(userId, "Dayknot Reminder", `It's time to: ${updates.title}`, sendAfterStr);
+      }
+
       await tasks.updateOne(
         { _id: taskId, userId },
         { $set: { 
+            timezone: req.body.timezone,
             title: updates.title, 
             priority: updates.priority, 
             activeDays: updates.activeDays,
             reminderEnabled: updates.reminderEnabled,
-            reminderTime: updates.reminderTime 
+            reminderTime: updates.reminderTime,
+            oneSignalNotificationId
           } 
         }
       );
@@ -68,6 +92,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'DELETE') {
       const { taskId, userId } = req.query;
       if (!taskId || !userId) return res.status(400).json({ error: 'Missing fields' });
+
+      const taskToDelete = await tasks.findOne({ _id: taskId, userId });
+      if (taskToDelete && taskToDelete.oneSignalNotificationId) {
+        await cancelOneSignalNotification(taskToDelete.oneSignalNotificationId);
+      }
 
       await tasks.deleteOne({ _id: taskId, userId });
 
