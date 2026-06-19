@@ -2113,7 +2113,7 @@ function updateAuthUI() {
     if (userDisplayName) userDisplayName.textContent = state.currentUser;
     if (sideDrawerUsername) sideDrawerUsername.textContent = state.currentUser;
 
-    const avatars = document.querySelectorAll('.user-avatar');
+    const avatars = document.querySelectorAll('.user-avatar, .profile-avatar');
     avatars.forEach(avatar => {
       if (state.picture) {
         avatar.innerHTML = `<img src="${state.picture}" alt="Avatar" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`;

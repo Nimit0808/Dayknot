@@ -2,6 +2,10 @@
    CSS CUSTOM VARIABLES & RESET
    ========================================================================== */
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 :root {
   /* Light Theme Palette - Terracotta & Warm Sand (Default) */
   --bg-primary: #f7f4ef; /* Soft warm sand */
