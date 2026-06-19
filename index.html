@@ -464,26 +464,79 @@
     </div>
   </div>
 
-  <!-- Settings Modal Overlay -->
+  <!-- Advanced Settings Modal Overlay -->
   <div id="settings-modal" class="modal-overlay">
-    <div class="modal-card glass">
+    <div class="modal-card glass" style="max-height: 90vh; overflow-y: auto; width: 450px;">
       <div class="modal-header">
-        <h3 id="settings-modal-title">Profile Settings</h3>
+        <h3 id="settings-modal-title">Account Settings</h3>
         <button id="settings-modal-close" class="btn-close">&times;</button>
       </div>
-      <form id="settings-form">
-        <div class="form-group" style="margin-bottom: 1.25rem;">
-          <label for="settings-username-input">Display Name (Username)</label>
-          <input type="text" id="settings-username-input" required placeholder="Enter new username..." autocomplete="off">
-        </div>
+      
+      <div class="settings-sections">
         
-        <div id="settings-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
-
-        <div class="modal-actions">
-          <button type="button" id="btn-settings-cancel" class="btn btn-secondary">Cancel</button>
-          <button type="submit" id="btn-settings-submit" class="btn btn-primary">Save Changes</button>
+        <!-- SECTION 1: Display Name -->
+        <div class="settings-section" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--card-border);">
+          <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">Profile</h4>
+          <form id="settings-username-form">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label for="settings-username-input">Display Name (Username)</label>
+              <input type="text" id="settings-username-input" required placeholder="Enter new username..." autocomplete="off">
+            </div>
+            <div id="settings-username-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
+            <button type="submit" id="btn-settings-username-submit" class="btn btn-secondary" style="width: 100%; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem;">Update Username</button>
+          </form>
         </div>
-      </form>
+
+        <!-- SECTION 2: Change Email -->
+        <div class="settings-section" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--card-border);">
+          <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">Email Address</h4>
+          
+          <form id="settings-email-form">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label for="settings-email-input">New Email Address</label>
+              <input type="email" id="settings-email-input" required placeholder="Enter new email..." autocomplete="email">
+            </div>
+            <div id="settings-email-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
+            <button type="submit" id="btn-settings-email-submit" class="btn btn-secondary" style="width: 100%; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem;">Change Email</button>
+          </form>
+
+          <form id="settings-email-verify-form" style="display: none; margin-top: 1rem;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Enter the 6-digit code sent to your new email.</p>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <input type="text" id="settings-email-verify-input" required placeholder="123456" maxlength="6" style="text-align: center; letter-spacing: 0.25rem; font-weight: bold;">
+            </div>
+            <div id="settings-email-verify-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
+            <button type="submit" id="btn-settings-email-verify-submit" class="btn btn-primary" style="width: 100%; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem;">Verify & Update Email</button>
+            <button type="button" id="btn-settings-email-verify-cancel" class="btn btn-ghost" style="width: 100%; padding: 0.5rem; margin-top: 0.25rem; font-size: 0.8rem;">Cancel</button>
+          </form>
+        </div>
+
+        <!-- SECTION 3: Change Password -->
+        <div class="settings-section" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--card-border);">
+          <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">Security</h4>
+          <form id="settings-password-form">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label for="settings-current-password-input">Current Password</label>
+              <input type="password" id="settings-current-password-input" required placeholder="Current password">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label for="settings-new-password-input">New Password</label>
+              <input type="password" id="settings-new-password-input" required placeholder="New password">
+            </div>
+            <div id="settings-password-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
+            <button type="submit" id="btn-settings-password-submit" class="btn btn-secondary" style="width: 100%; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem;">Update Password</button>
+          </form>
+        </div>
+
+        <!-- SECTION 4: Danger Zone -->
+        <div class="settings-section">
+          <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--color-rose); margin-bottom: 0.75rem;">Danger Zone</h4>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Once you delete your account, there is no going back. All habits and completions will be permanently wiped.</p>
+          <div id="settings-delete-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
+          <button type="button" id="btn-settings-delete-account" class="btn btn-ghost" style="width: 100%; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--color-rose); border: 1px solid var(--color-rose); background: rgba(239, 68, 68, 0.05);">Delete Account Permanently</button>
+        </div>
+
+      </div>
     </div>
   </div>
 

@@ -1761,16 +1761,12 @@ function setupSettingsForm() {
   const userDisplayName = document.getElementById('user-display-name');
   const settingsModal = document.getElementById('settings-modal');
   const btnSettingsClose = document.getElementById('settings-modal-close');
-  const btnSettingsCancel = document.getElementById('btn-settings-cancel');
-  const settingsForm = document.getElementById('settings-form');
-  const settingsUsernameInput = document.getElementById('settings-username-input');
-  const btnSettingsSubmit = document.getElementById('btn-settings-submit');
-  const settingsErrorMsg = document.getElementById('settings-error-msg');
 
   const openSettings = () => {
     if (!state.currentUser) return;
-    settingsUsernameInput.value = state.currentUser;
-    settingsErrorMsg.style.display = 'none';
+    document.getElementById('settings-username-input').value = state.currentUser;
+    // reset all error msgs
+    document.querySelectorAll('#settings-modal .auth-error-msg').forEach(el => el.style.display = 'none');
     settingsModal.classList.add('active');
   };
 
@@ -1781,25 +1777,23 @@ function setupSettingsForm() {
   btnSettings && btnSettings.addEventListener('click', openSettings);
   userDisplayName && userDisplayName.addEventListener('click', openSettings);
   btnSettingsClose && btnSettingsClose.addEventListener('click', closeSettings);
-  btnSettingsCancel && btnSettingsCancel.addEventListener('click', closeSettings);
 
-  settingsForm && settingsForm.addEventListener('submit', async (e) => {
+  // 1. Update Username
+  const usernameForm = document.getElementById('settings-username-form');
+  const btnUsernameSubmit = document.getElementById('btn-settings-username-submit');
+  const usernameError = document.getElementById('settings-username-error-msg');
+  
+  usernameForm && usernameForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const newUsername = settingsUsernameInput.value.trim().toLowerCase();
-    
-    if (!newUsername || newUsername === state.currentUser) {
-      closeSettings();
-      return;
-    }
+    const newUsername = document.getElementById('settings-username-input').value.trim().toLowerCase();
+    if (!newUsername || newUsername === state.currentUser) return;
 
-    btnSettingsSubmit.disabled = true;
-    btnSettingsSubmit.textContent = 'Saving...';
-    settingsErrorMsg.style.display = 'none';
+    btnUsernameSubmit.disabled = true;
+    btnUsernameSubmit.textContent = 'Updating...';
+    usernameError.style.display = 'none';
 
     try {
       const res = await apiPost('/api/profile', { currentUser: state.currentUser, newUsername }, 'PUT');
-      
-      // Update session storage
       if (localStorage.getItem('dayknot_auth')) {
         const currentAuth = JSON.parse(localStorage.getItem('dayknot_auth'));
         currentAuth.user = res.username;
@@ -1807,17 +1801,140 @@ function setupSettingsForm() {
       } else if (sessionStorage.getItem('dayknot_current_user')) {
         sessionStorage.setItem('dayknot_current_user', res.username);
       }
-
       state.currentUser = res.username;
       updateAuthUI();
       renderAll();
-      closeSettings();
+      alert('Username updated successfully!');
     } catch (err) {
-      settingsErrorMsg.textContent = err.message;
-      settingsErrorMsg.style.display = 'block';
+      usernameError.textContent = err.message;
+      usernameError.style.display = 'block';
     } finally {
-      btnSettingsSubmit.disabled = false;
-      btnSettingsSubmit.textContent = 'Save Changes';
+      btnUsernameSubmit.disabled = false;
+      btnUsernameSubmit.textContent = 'Update Username';
+    }
+  });
+
+  // 2. Change Email Request
+  const emailForm = document.getElementById('settings-email-form');
+  const btnEmailSubmit = document.getElementById('btn-settings-email-submit');
+  const emailError = document.getElementById('settings-email-error-msg');
+  const emailVerifyForm = document.getElementById('settings-email-verify-form');
+
+  emailForm && emailForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newEmail = document.getElementById('settings-email-input').value.trim().toLowerCase();
+    if (!newEmail) return;
+
+    btnEmailSubmit.disabled = true;
+    btnEmailSubmit.textContent = 'Sending code...';
+    emailError.style.display = 'none';
+
+    try {
+      await apiPost('/api/change-email-request', { currentUser: state.currentUser, newEmail });
+      window.pendingSettingsEmail = newEmail;
+      emailForm.style.display = 'none';
+      emailVerifyForm.style.display = 'block';
+    } catch (err) {
+      emailError.textContent = err.message;
+      emailError.style.display = 'block';
+    } finally {
+      btnEmailSubmit.disabled = false;
+      btnEmailSubmit.textContent = 'Change Email';
+    }
+  });
+
+  // Change Email Verify
+  const btnEmailVerifyCancel = document.getElementById('btn-settings-email-verify-cancel');
+  const btnEmailVerifySubmit = document.getElementById('btn-settings-email-verify-submit');
+  const emailVerifyError = document.getElementById('settings-email-verify-error-msg');
+
+  btnEmailVerifyCancel && btnEmailVerifyCancel.addEventListener('click', () => {
+    emailVerifyForm.style.display = 'none';
+    emailForm.style.display = 'block';
+    document.getElementById('settings-email-verify-input').value = '';
+  });
+
+  emailVerifyForm && emailVerifyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = document.getElementById('settings-email-verify-input').value.trim();
+    if (!code || !window.pendingSettingsEmail) return;
+
+    btnEmailVerifySubmit.disabled = true;
+    btnEmailVerifySubmit.textContent = 'Verifying...';
+    emailVerifyError.style.display = 'none';
+
+    try {
+      await apiPost('/api/change-email-verify', { currentUser: state.currentUser, code });
+      alert('Email updated successfully!');
+      emailVerifyForm.style.display = 'none';
+      emailForm.style.display = 'block';
+      document.getElementById('settings-email-input').value = '';
+      document.getElementById('settings-email-verify-input').value = '';
+    } catch (err) {
+      emailVerifyError.textContent = err.message;
+      emailVerifyError.style.display = 'block';
+    } finally {
+      btnEmailVerifySubmit.disabled = false;
+      btnEmailVerifySubmit.textContent = 'Verify & Update Email';
+    }
+  });
+
+  // 3. Change Password
+  const passwordForm = document.getElementById('settings-password-form');
+  const btnPasswordSubmit = document.getElementById('btn-settings-password-submit');
+  const passwordError = document.getElementById('settings-password-error-msg');
+
+  passwordForm && passwordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById('settings-current-password-input').value.trim();
+    const newPassword = document.getElementById('settings-new-password-input').value.trim();
+    if (!currentPassword || !newPassword) return;
+
+    btnPasswordSubmit.disabled = true;
+    btnPasswordSubmit.textContent = 'Updating...';
+    passwordError.style.display = 'none';
+
+    try {
+      const currentPasswordHash = await hashPassword(currentPassword);
+      const newPasswordHash = await hashPassword(newPassword);
+      await apiPost('/api/change-password', { currentUser: state.currentUser, currentPasswordHash, newPasswordHash });
+      
+      alert('Password updated successfully!');
+      document.getElementById('settings-current-password-input').value = '';
+      document.getElementById('settings-new-password-input').value = '';
+    } catch (err) {
+      passwordError.textContent = err.message;
+      passwordError.style.display = 'block';
+    } finally {
+      btnPasswordSubmit.disabled = false;
+      btnPasswordSubmit.textContent = 'Update Password';
+    }
+  });
+
+  // 4. Delete Account
+  const btnDeleteAccount = document.getElementById('btn-settings-delete-account');
+  const deleteError = document.getElementById('settings-delete-error-msg');
+
+  btnDeleteAccount && btnDeleteAccount.addEventListener('click', async () => {
+    const confirmDelete = window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone and all data will be lost.');
+    if (!confirmDelete) return;
+
+    btnDeleteAccount.disabled = true;
+    btnDeleteAccount.textContent = 'Deleting...';
+    deleteError.style.display = 'none';
+
+    try {
+      await apiDelete('/api/delete-account', { currentUser: state.currentUser });
+      
+      alert('Your account has been deleted.');
+      closeSettings();
+      // Use existing sign-out logic to clear local state
+      const performSignOut = document.getElementById('btn-sign-out').click(); 
+    } catch (err) {
+      deleteError.textContent = err.message;
+      deleteError.style.display = 'block';
+      btnDeleteAccount.disabled = false;
+      btnDeleteAccount.textContent = 'Delete Account Permanently';
     }
   });
 }
