@@ -95,6 +95,31 @@ const MONTH_NAMES = [
 ];
 
 // ==========================================================================
+// DYNAMIC LAZY LOADERS
+// ==========================================================================
+window.loadOneSignal = function() {
+  if (document.getElementById('onesignal-script')) return;
+  
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "0b9d40da-87af-421b-9554-72c07105971c",
+      notifyButton: { enable: false },
+      allowLocalhostAsSecureOrigin: true
+    });
+    if (state.currentUser) {
+      await OneSignal.login(state.currentUser);
+    }
+  });
+
+  const script = document.createElement('script');
+  script.id = 'onesignal-script';
+  script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+  script.defer = true;
+  document.head.appendChild(script);
+};
+
+// ==========================================================================
 // APP INITIALIZATION
 // ==========================================================================
 
@@ -113,12 +138,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Auto-sync data if logged in
   if (state.currentUser) {
     await syncFromCloud();
-    // Login to OneSignal using the custom dayknot username
-    if (window.OneSignalDeferred) {
-      window.OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.login(state.currentUser);
-      });
-    }
   }
 });
 
@@ -1348,7 +1367,19 @@ function renderHabitHeatmap() {
 
 function renderTrendChart() {
   const canvas = document.getElementById('analytics-trend-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
+  if (!canvas) return;
+
+  // Lazy Load Chart.js
+  if (typeof Chart === 'undefined') {
+    if (document.getElementById('chartjs-script')) return; // Already loading
+    const script = document.createElement('script');
+    script.id = 'chartjs-script';
+    script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+    script.defer = true;
+    script.onload = renderTrendChart;
+    document.head.appendChild(script);
+    return;
+  }
 
   if (window.myTrendChart) {
     window.myTrendChart.destroy();
@@ -1881,31 +1912,42 @@ function setupAuthForm() {
     }
   };
 
-  // Initialize GIS after script load
-  window.onload = async function () {
-    if (window.google) {
-      try {
-        const res = await fetch('/api/config');
-        const config = await res.json();
-        if (config.googleClientId) {
-          google.accounts.id.initialize({
-            client_id: config.googleClientId,
-            callback: handleGoogleCredentialResponse
-          });
-          const googleBtnContainer = document.getElementById('google-btn-container');
-          if (googleBtnContainer) {
-            google.accounts.id.renderButton(
-              googleBtnContainer,
-              { theme: 'outline', size: 'large', width: 250, text: 'continue_with' }
-            );
+  // Lazy Load Google Identity Services
+  window.loadGoogleAuth = function () {
+    if (document.getElementById('google-gsi-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-script';
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = async () => {
+      if (window.google) {
+        try {
+          const res = await fetch('/api/config');
+          const config = await res.json();
+          if (config.googleClientId) {
+            google.accounts.id.initialize({
+              client_id: config.googleClientId,
+              callback: handleGoogleCredentialResponse
+            });
+            const googleBtnContainer = document.getElementById('google-btn-container');
+            if (googleBtnContainer) {
+              google.accounts.id.renderButton(
+                googleBtnContainer,
+                { theme: 'outline', size: 'large', width: 250, text: 'continue_with' }
+              );
+            }
+          } else {
+            console.warn('Google Client ID not found in server config.');
           }
-        } else {
-          console.warn('Google Client ID not found in server config.');
+        } catch (err) {
+          console.error('Failed to load config for Google Sign-In', err);
         }
-      } catch (err) {
-        console.error('Failed to load config for Google Sign-In', err);
       }
-    }
+    };
+    document.head.appendChild(script);
   };
 
   tabLogin && tabLogin.addEventListener('click', () => {
@@ -2171,6 +2213,7 @@ function updateAuthUI() {
 
   if (state.currentUser) {
     overlay && overlay.classList.add('inactive');
+    if (window.loadOneSignal) window.loadOneSignal();
     if (userDisplayName) userDisplayName.textContent = state.currentUser;
     if (sideDrawerUsername) sideDrawerUsername.textContent = state.currentUser;
 
@@ -2193,6 +2236,7 @@ function updateAuthUI() {
     }
   } else {
     overlay && overlay.classList.remove('inactive');
+    if (window.loadGoogleAuth) window.loadGoogleAuth();
   }
 }
 
