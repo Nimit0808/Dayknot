@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
         return res.status(403).json({ error: 'Account not verified. A new code has been sent to your email.', requiresVerification: true, email: user.email });
       }
 
-      return res.status(200).json({ success: true, email: user.email, username: user.username || user._id });
+      return res.status(200).json({ success: true, email: user.email, username: user.username || user._id, picture: user.picture, theme: user.theme, accent: user.accent });
     }
 
     if (action === 'verify') {
@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
         }
       );
 
-      return res.status(200).json({ success: true, email: user.email, username: user.username || user._id });
+      return res.status(200).json({ success: true, email: user.email, username: user.username || user._id, picture: user.picture, theme: user.theme, accent: user.accent });
     }
 
     if (action === 'google') {

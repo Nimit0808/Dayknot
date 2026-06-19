@@ -97,6 +97,8 @@ let state = {
   selectedDate: null, // string 'YYYY-MM-DD'
   bestStreak: 0,
   theme: 'light',
+  accent: 'terracotta',
+  picture: null,
   currentTab: 'calendar-view',
   currentUser: null
 };
@@ -133,12 +135,18 @@ function loadData() {
       const authData = JSON.parse(authDataStr);
       if (authData.expiresAt && new Date().getTime() < authData.expiresAt) {
         savedUser = authData.user;
+        state.picture = authData.picture || null;
+        state.theme = authData.theme || 'light';
+        state.accent = authData.accent || 'terracotta';
       } else {
         localStorage.removeItem('dayknot_auth');
       }
     } catch (e) {}
   } else {
     savedUser = sessionStorage.getItem('dayknot_current_user');
+    state.picture = sessionStorage.getItem('dayknot_picture') || null;
+    state.theme = sessionStorage.getItem('dayknot_theme') || 'light';
+    state.accent = sessionStorage.getItem('dayknot_accent') || 'terracotta';
   }
 
   if (!savedUser) {
@@ -175,9 +183,11 @@ function loadData() {
   } else {
     state.tasks = [];
     state.bestStreak = 0;
+    state.theme = 'light';
+    state.accent = 'terracotta';
+    state.picture = null;
   }
 
-  state.theme = 'light';
   state.selectedDate = formatDateString(new Date());
 }
 
@@ -197,7 +207,8 @@ function saveBestStreak() {
 
 // Theme setup
 function setupTheme() {
-  document.documentElement.setAttribute('data-theme', 'light');
+  document.documentElement.setAttribute('data-theme', state.theme || 'light');
+  document.documentElement.setAttribute('data-accent', state.accent || 'terracotta');
 }
 
 // Navigation Tabs
@@ -1430,20 +1441,16 @@ function setupAuthForm() {
 
     try {
       const res = await apiPost('/api/auth', { action: 'google', credential });
-      
-      // Update session logic just like normal login
       state.currentUser = res.username;
-      
-      const rememberMe = document.getElementById('auth-remember-me');
-      if (rememberMe && rememberMe.checked) {
-        const expiresAt = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
-        localStorage.setItem('dayknot_auth', JSON.stringify({ user: res.username, expiresAt }));
-        sessionStorage.removeItem('dayknot_current_user');
-      } else {
-        sessionStorage.setItem('dayknot_current_user', res.username);
-        localStorage.removeItem('dayknot_auth');
-      }
+      state.picture = res.picture || null;
+      state.theme = res.theme || 'light';
+      state.accent = res.accent || 'terracotta';
 
+      const authData = { user: res.username, picture: res.picture, theme: res.theme, accent: res.accent, expiresAt: new Date().getTime() + 30 * 24 * 60 * 60 * 1000 };
+      localStorage.setItem('dayknot_auth', JSON.stringify(authData));
+      sessionStorage.removeItem('dayknot_current_user');
+      
+      setupTheme();
       usernameInput.value = '';
       passwordInput.value = '';
       if (emailInput) emailInput.value = '';
@@ -1749,6 +1756,24 @@ function updateAuthUI() {
     overlay && overlay.classList.add('inactive');
     if (userDisplayName) userDisplayName.textContent = state.currentUser;
     if (sideDrawerUsername) sideDrawerUsername.textContent = state.currentUser;
+
+    const avatars = document.querySelectorAll('.user-avatar');
+    avatars.forEach(avatar => {
+      if (state.picture) {
+        avatar.innerHTML = `<img src="${state.picture}" alt="Avatar" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`;
+      } else {
+        avatar.textContent = '👤';
+      }
+    });
+
+    const settingsAvatar = document.getElementById('settings-avatar-preview');
+    if (settingsAvatar) {
+      if (state.picture) {
+        settingsAvatar.innerHTML = `<img src="${state.picture}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">`;
+      } else {
+        settingsAvatar.textContent = '👤';
+      }
+    }
   } else {
     overlay && overlay.classList.remove('inactive');
   }
@@ -1777,6 +1802,155 @@ function setupSettingsForm() {
   btnSettings && btnSettings.addEventListener('click', openSettings);
   userDisplayName && userDisplayName.addEventListener('click', openSettings);
   btnSettingsClose && btnSettingsClose.addEventListener('click', closeSettings);
+
+  // Tab Switching Logic
+  const tabBtns = document.querySelectorAll('.settings-tab-btn');
+  const panes = document.querySelectorAll('.settings-pane');
+  
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      panes.forEach(p => p.style.display = 'none');
+      
+      btn.classList.add('active');
+      const targetPane = document.getElementById(`settings-pane-${btn.dataset.tab}`);
+      if (targetPane) targetPane.style.display = 'block';
+    });
+  });
+
+  // Init Theme and Accent inputs
+  const themeRadios = document.querySelectorAll('input[name="theme-pref"]');
+  const accentBtns = document.querySelectorAll('.accent-btn');
+
+  const updateServerTheme = async (theme, accent) => {
+    try {
+      await apiPost('/api/account', { action: 'update_theme', currentUser: state.currentUser, theme, accent });
+      
+      // Update local storage auth state
+      if (localStorage.getItem('dayknot_auth')) {
+        const authData = JSON.parse(localStorage.getItem('dayknot_auth'));
+        if (theme) authData.theme = theme;
+        if (accent) authData.accent = accent;
+        localStorage.setItem('dayknot_auth', JSON.stringify(authData));
+      } else {
+        if (theme) sessionStorage.setItem('dayknot_theme', theme);
+        if (accent) sessionStorage.setItem('dayknot_accent', accent);
+      }
+      
+      if (theme) state.theme = theme;
+      if (accent) state.accent = accent;
+      setupTheme();
+    } catch (err) {
+      console.error('Failed to update theme preference:', err);
+    }
+  };
+
+  themeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.checked) updateServerTheme(e.target.value, null);
+    });
+  });
+
+  accentBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      updateServerTheme(null, btn.dataset.color);
+    });
+  });
+
+  // Helper to sync radio buttons UI when opening settings
+  const syncSettingsUI = () => {
+    themeRadios.forEach(radio => {
+      if (radio.value === (state.theme || 'light')) radio.checked = true;
+    });
+  };
+  
+  // Hook openSettings to sync theme UI
+  const originalOpenSettings = openSettings;
+  btnSettings && btnSettings.removeEventListener('click', openSettings);
+  userDisplayName && userDisplayName.removeEventListener('click', openSettings);
+  
+  const newOpenSettings = () => {
+    syncSettingsUI();
+    originalOpenSettings();
+  };
+  btnSettings && btnSettings.addEventListener('click', newOpenSettings);
+  userDisplayName && userDisplayName.addEventListener('click', newOpenSettings);
+
+  // Avatar Upload Logic
+  const avatarUpload = document.getElementById('settings-avatar-upload');
+  const avatarStatus = document.getElementById('settings-avatar-status');
+  
+  avatarUpload && avatarUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    avatarStatus.style.display = 'block';
+    avatarStatus.style.color = 'var(--text-secondary)';
+    avatarStatus.textContent = 'Processing image...';
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 150;
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions, maintaining aspect ratio
+        if (width > height) {
+          if (width > maxSize) {
+            height *= maxSize / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width *= maxSize / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress image to WebP (or JPEG if WebP not supported)
+        const base64Image = canvas.toDataURL('image/webp', 0.8);
+        
+        avatarStatus.textContent = 'Uploading...';
+        
+        // Send to backend
+        apiPost('/api/account', { action: 'upload_picture', currentUser: state.currentUser, picture: base64Image })
+          .then(res => {
+            avatarStatus.style.color = 'var(--color-emerald)';
+            avatarStatus.textContent = 'Avatar updated successfully!';
+            
+            state.picture = res.picture;
+            
+            if (localStorage.getItem('dayknot_auth')) {
+              const authData = JSON.parse(localStorage.getItem('dayknot_auth'));
+              authData.picture = res.picture;
+              localStorage.setItem('dayknot_auth', JSON.stringify(authData));
+            } else {
+              sessionStorage.setItem('dayknot_picture', res.picture);
+            }
+            
+            updateAuthUI();
+            
+            setTimeout(() => {
+              avatarStatus.style.display = 'none';
+            }, 3000);
+          })
+          .catch(err => {
+            avatarStatus.style.color = 'var(--color-rose)';
+            avatarStatus.textContent = 'Upload failed: ' + err.message;
+          });
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
   // 1. Update Username
   const usernameForm = document.getElementById('settings-username-form');

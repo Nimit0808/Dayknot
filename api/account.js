@@ -121,6 +121,27 @@ module.exports = async function handler(req, res) {
       await users.updateOne({ _id: user._id }, { $set: { passwordHash: newPasswordHash } });
       return res.status(200).json({ success: true, message: 'Password updated successfully' });
     }
+
+    else if (action === 'upload_picture') {
+      const { picture } = req.body;
+      if (!picture) return res.status(400).json({ error: 'Missing picture' });
+
+      // picture should be a Base64 encoded string
+      await users.updateOne({ _id: user._id }, { $set: { picture } });
+      return res.status(200).json({ success: true, picture });
+    }
+
+    else if (action === 'update_theme') {
+      const { theme, accent } = req.body;
+      const updateData = {};
+      if (theme) updateData.theme = theme;
+      if (accent) updateData.accent = accent;
+      
+      if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Nothing to update' });
+
+      await users.updateOne({ _id: user._id }, { $set: updateData });
+      return res.status(200).json({ success: true, ...updateData });
+    }
     
     else if (action === 'delete_account') {
       const userIdToClear = user.username || normalizedCurrentUser;
