@@ -168,11 +168,27 @@ function checkReminders() {
     // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
     if (currentTimeStr === task.reminderTime) {
       if (!notifiedTasks.includes(task.id)) {
-        // Send notification
-        new Notification("Dayknot Reminder", {
-          body: `It's time to: ${task.title}`,
-          icon: "/icon.svg"
-        });
+        // Send notification via ServiceWorker if possible (required for Android/iOS PWAs)
+        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification("Dayknot Reminder", {
+              body: `It's time to: ${task.title}`,
+              icon: "/icon.svg",
+              badge: "/icon.svg"
+            });
+          }).catch(() => {
+            // Fallback
+            new Notification("Dayknot Reminder", {
+              body: `It's time to: ${task.title}`,
+              icon: "/icon.svg"
+            });
+          });
+        } else {
+          new Notification("Dayknot Reminder", {
+            body: `It's time to: ${task.title}`,
+            icon: "/icon.svg"
+          });
+        }
         notifiedTasks.push(task.id);
         updatedNotified = true;
       }
