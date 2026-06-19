@@ -1111,10 +1111,18 @@ btnTestNotification.addEventListener('click', async () => {
   if (Notification.permission === 'granted') {
     if (state.currentUser) {
       try {
-        await apiPost('/api/test-push', { userId: state.currentUser });
+        const res = await fetch('/api/test-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: state.currentUser })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Unknown error');
+        }
       } catch (err) {
         console.error("Test push failed", err);
-        alert("Failed to send test push via backend.");
+        alert(`Failed to send test push via backend: ${err.message}`);
       }
     }
   } else {

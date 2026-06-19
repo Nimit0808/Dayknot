@@ -16,12 +16,12 @@ module.exports = async function handler(req, res) {
     const iso = futureTime.toISOString();
     const sendAfterStr = `${iso.substring(0, 10)} ${iso.substring(11, 19)} GMT`;
 
-    const id = await scheduleOneSignalNotification(userId, "Test Successful! 🎉", "Native notifications are working perfectly even if closed.", sendAfterStr);
+    const result = await scheduleOneSignalNotification(userId, "Test Successful! 🎉", "Native notifications are working perfectly even if closed.", sendAfterStr);
     
-    if (id) {
-      return res.status(200).json({ success: true, id });
+    if (result && result.id) {
+      return res.status(200).json({ success: true, id: result.id });
     } else {
-      return res.status(500).json({ error: 'Failed to schedule notification' });
+      return res.status(500).json({ error: result.error || 'Failed to schedule notification' });
     }
   }
 
