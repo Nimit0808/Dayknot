@@ -194,6 +194,8 @@ function checkReminders() {
   
   const todayStr = getLocalDateString(now);
 
+  console.log(`[Reminder Check] Local Time: ${now.toLocaleString()} | currentTimeStr: ${currentTimeStr}`);
+
   // We use localStorage to track if a notification was already sent today for a task
   // to avoid spamming the user every minute during the reminder time.
   const notifiedTasksKey = `dayknot_notified_${state.currentUser}_${todayStr}`;
@@ -209,9 +211,12 @@ function checkReminders() {
     if (!task.activeDays.includes(currentDayOfWeek)) return;
     if (task.completedDates.includes(todayStr)) return; // Already done
     
+    console.log(`[Reminder Check] Habit: "${task.title}" | Target Reminder: ${task.reminderTime} | Notified Today: ${notifiedTasks.includes(task.id)}`);
+    
     // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
     if (currentTimeStr >= task.reminderTime) {
       if (!notifiedTasks.includes(task.id)) {
+        console.log(`[Reminder Trigger] Firing notification for "${task.title}"...`);
         // ALWAYS show in-app toast
         showToastNotification("Dayknot Reminder", `It's time to: ${task.title}`);
 
@@ -223,11 +228,19 @@ function checkReminders() {
                 body: `It's time to: ${task.title}`,
                 icon: "/icon.svg",
                 badge: "/icon.svg"
-              }).catch(() => {});
+              }).then(() => console.log(`[Reminder Trigger] Native notification sent via ServiceWorker.`))
+                .catch(e => console.log(`[Reminder Trigger] ServiceWorker notification failed:`, e));
             });
           } else {
-            try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
+            try { 
+              new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); 
+              console.log(`[Reminder Trigger] Native notification sent via new Notification().`);
+            } catch(e) {
+              console.log(`[Reminder Trigger] new Notification() failed:`, e);
+            }
           }
+        } else {
+           console.log(`[Reminder Trigger] Skipped native notification because permission is not granted.`);
         }
         
         notifiedTasks.push(task.id);
