@@ -29,6 +29,15 @@
 
   <!-- Fullscreen Auth Screen Overlay -->
   <div id="auth-overlay" class="auth-overlay active">
+    <script>
+      try {
+        const _state = JSON.parse(localStorage.getItem('dayknot_state'));
+        if (_state && _state.currentUser) {
+          document.getElementById('auth-overlay').classList.add('inactive');
+          document.getElementById('auth-overlay').classList.remove('active');
+        }
+      } catch(e) {}
+    </script>
     <div class="auth-card glass">
       <div class="auth-logo">
         <span class="logo-icon">➰</span>
