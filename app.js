@@ -125,10 +125,6 @@ let reminderIntervalId = null;
 function initReminderEngine() {
   if (reminderIntervalId) clearInterval(reminderIntervalId);
   
-  if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
-    Notification.requestPermission();
-  }
-
   // Check every minute
   reminderIntervalId = setInterval(() => {
     checkReminders();
@@ -1102,14 +1098,47 @@ const taskReminderEnabled = document.getElementById('task-reminder-enabled');
 const taskReminderTime = document.getElementById('task-reminder-time');
 const taskReminderTimeGroup = document.getElementById('task-reminder-time-group');
 
+const btnTestNotification = document.getElementById('btn-test-notification');
+
 taskReminderEnabled.addEventListener('change', (e) => {
   if (e.target.checked) {
-    taskReminderTimeGroup.style.display = 'block';
-    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+    taskReminderTimeGroup.style.display = 'flex';
+    // Request permission if not already decided
+    if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   } else {
     taskReminderTimeGroup.style.display = 'none';
+  }
+});
+
+btnTestNotification.addEventListener('click', async () => {
+  if (!("Notification" in window)) {
+    alert("Your browser does not support notifications.");
+    return;
+  }
+  
+  // Force request permission on click (required for iOS)
+  let permission = Notification.permission;
+  if (permission !== 'granted') {
+    permission = await Notification.requestPermission();
+  }
+
+  if (permission === 'granted') {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.showNotification("Test Successful! 🎉", {
+          body: "If you see this, reminders are working correctly.",
+          icon: "/icon.svg"
+        });
+      }).catch(err => {
+        new Notification("Test Successful! 🎉", { body: "Reminders are working.", icon: "/icon.svg" });
+      });
+    } else {
+      new Notification("Test Successful! 🎉", { body: "Reminders are working.", icon: "/icon.svg" });
+    }
+  } else {
+    alert("Notifications are disabled. Please enable them in your device Settings for this app.");
   }
 });
 
@@ -1126,7 +1155,7 @@ function openModal(editingTaskId = null) {
     
     if (task.reminderEnabled) {
       taskReminderEnabled.checked = true;
-      taskReminderTimeGroup.style.display = 'block';
+      taskReminderTimeGroup.style.display = 'flex';
       taskReminderTime.value = task.reminderTime || '';
     } else {
       taskReminderEnabled.checked = false;
