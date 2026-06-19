@@ -122,6 +122,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==========================================================================
 let reminderIntervalId = null;
 
+// ==========================================================================
+// TOAST NOTIFICATIONS (IN-APP FALLBACK)
+// ==========================================================================
+function showToastNotification(title, message) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = 'glass';
+  toast.style.padding = '1rem';
+  toast.style.borderRadius = '12px';
+  toast.style.display = 'flex';
+  toast.style.flexDirection = 'column';
+  toast.style.gap = '0.25rem';
+  toast.style.transform = 'translateY(-20px)';
+  toast.style.opacity = '0';
+  toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+  toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+  toast.style.pointerEvents = 'auto';
+  toast.style.borderLeft = '4px solid var(--color-primary)';
+  
+  toast.innerHTML = `
+    <div style="font-weight: bold; font-size: 0.95rem; color: var(--text-primary);">${title}</div>
+    <div style="font-size: 0.85rem; color: var(--text-secondary);">${message}</div>
+  `;
+  
+  container.appendChild(toast);
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+  });
+  
+  // Play a soft sound if possible
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAD//wEA');
+    audio.play().catch(e => {});
+  } catch(e) {}
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
+
 function initReminderEngine() {
   if (reminderIntervalId) clearInterval(reminderIntervalId);
   
@@ -164,27 +212,24 @@ function checkReminders() {
     // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
     if (currentTimeStr === task.reminderTime) {
       if (!notifiedTasks.includes(task.id)) {
-        // Send notification via ServiceWorker if possible (required for Android/iOS PWAs)
-        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-          navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification("Dayknot Reminder", {
-              body: `It's time to: ${task.title}`,
-              icon: "/icon.svg",
-              badge: "/icon.svg"
+        // ALWAYS show in-app toast
+        showToastNotification("Dayknot Reminder", `It's time to: ${task.title}`);
+
+        // Try native notification
+        if ("Notification" in window && Notification.permission === "granted") {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification("Dayknot Reminder", {
+                body: `It's time to: ${task.title}`,
+                icon: "/icon.svg",
+                badge: "/icon.svg"
+              }).catch(() => {});
             });
-          }).catch(() => {
-            // Fallback
-            new Notification("Dayknot Reminder", {
-              body: `It's time to: ${task.title}`,
-              icon: "/icon.svg"
-            });
-          });
-        } else {
-          new Notification("Dayknot Reminder", {
-            body: `It's time to: ${task.title}`,
-            icon: "/icon.svg"
-          });
+          } else {
+            try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
+          }
         }
+        
         notifiedTasks.push(task.id);
         updatedNotified = true;
       }
@@ -1113,32 +1158,32 @@ taskReminderEnabled.addEventListener('change', (e) => {
 });
 
 btnTestNotification.addEventListener('click', async () => {
+  // Always show the in-app toast to prove the reminder works
+  showToastNotification("Test Successful! 🎉", "If you see this, reminders are working correctly.");
+
   if (!("Notification" in window)) {
-    alert("Your browser does not support notifications.");
     return;
   }
   
   // Force request permission on click (required for iOS)
   let permission = Notification.permission;
   if (permission !== 'granted') {
-    permission = await Notification.requestPermission();
+    try {
+      permission = await Notification.requestPermission();
+    } catch(e) {}
   }
 
   if (permission === 'granted') {
     if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
       navigator.serviceWorker.ready.then(registration => {
         registration.showNotification("Test Successful! 🎉", {
-          body: "If you see this, reminders are working correctly.",
+          body: "Native notifications are working.",
           icon: "/icon.svg"
-        });
-      }).catch(err => {
-        new Notification("Test Successful! 🎉", { body: "Reminders are working.", icon: "/icon.svg" });
+        }).catch(err => {});
       });
     } else {
-      new Notification("Test Successful! 🎉", { body: "Reminders are working.", icon: "/icon.svg" });
+      try { new Notification("Test Successful! 🎉", { body: "Native notifications are working.", icon: "/icon.svg" }); } catch(e) {}
     }
-  } else {
-    alert("Notifications are disabled. Please enable them in your device Settings for this app.");
   }
 });
 
