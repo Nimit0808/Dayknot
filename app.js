@@ -209,6 +209,9 @@ function saveBestStreak() {
 function setupTheme() {
   document.documentElement.setAttribute('data-theme', state.theme || 'light');
   document.documentElement.setAttribute('data-accent', state.accent || 'terracotta');
+  if (state.currentTab === 'analytics-view') {
+    renderTrendChart();
+  }
 }
 
 // Navigation Tabs
@@ -232,6 +235,7 @@ function setupNavigation() {
       if (target === 'matrix-view') renderHabitMatrix();
       if (target === 'history-view') renderHistoryTable();
       if (target === 'configure-view') renderConfigurationView();
+      if (target === 'analytics-view') renderAnalyticsDashboard();
 
       // Sync Mobile Drawer state
       const sideNavDrawer = document.getElementById('side-nav-drawer');
@@ -391,6 +395,38 @@ function getMonthlyStats() {
   };
 }
 
+// Calculate Weekly Completion %
+function getWeeklyCompletionPercent() {
+  const today = new Date();
+  const weekStart = new Date(today);
+  const dayOfWeek = weekStart.getDay(); // 0 is Sunday
+  const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
+  weekStart.setDate(diff);
+  weekStart.setHours(0,0,0,0);
+
+  let weeklyExpected = 0;
+  let weeklyCompleted = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    if (d > today) continue; // Don't count future days in the week
+
+    const dateStr = formatDateString(d);
+    const dayIndex = d.getDay();
+    const activeTasks = state.tasks.filter(t => t.activeDays && t.activeDays.includes(dayIndex));
+    weeklyExpected += activeTasks.length;
+    
+    activeTasks.forEach(t => {
+      if (t.completedDates && t.completedDates.includes(dateStr)) {
+        weeklyCompleted++;
+      }
+    });
+  }
+
+  return weeklyExpected === 0 ? 0 : Math.round((weeklyCompleted / weeklyExpected) * 100);
+}
+
 // Calculate the current active streak based on perfect days scanning backwards
 function calculateStreak() {
   const today = new Date();
@@ -463,29 +499,27 @@ function renderAll() {
   renderAnalyticsDashboard();
 }
 
-// Render Monthly Stat Widgets
+// Render Global Stat Widgets
 function renderStatsWidgets() {
   const stats = getMonthlyStats();
   const currentStreak = calculateStreak();
+  const weeklyPercent = getWeeklyCompletionPercent();
 
-  // 1. Monthly Consistency
-  document.getElementById('monthly-consistency-text').textContent = `${stats.consistency}%`;
-  document.getElementById('monthly-ratio-text').textContent = `${stats.completionsCount} of ${stats.totalCount} routines logged`;
-  
-  // Consistency progress ring fill
-  const circle = document.getElementById('monthly-progress-ring-fill');
-  const radius = circle.r.baseVal.value;
-  const circumference = radius * 2 * Math.PI;
-  circle.style.strokeDasharray = `${circumference} ${circumference}`;
-  const offset = circumference - (stats.consistency / 100) * circumference;
-  circle.style.strokeDashoffset = offset;
+  // 1. Current Streak
+  const currentStreakEl = document.getElementById('dashboard-current-streak');
+  if (currentStreakEl) currentStreakEl.textContent = currentStreak;
 
-  // 2. Perfect Days
-  document.getElementById('perfect-days-count').textContent = `${stats.perfectDaysCount} Day${stats.perfectDaysCount === 1 ? '' : 's'}`;
+  // 2. Best Streak
+  const bestStreakEl = document.getElementById('dashboard-best-streak');
+  if (bestStreakEl) bestStreakEl.textContent = state.bestStreak;
 
-  // 3. Streak Metrics
-  document.getElementById('streak-count').textContent = `${currentStreak} Day${currentStreak === 1 ? '' : 's'}`;
-  document.getElementById('streak-best').textContent = `Personal Best: ${state.bestStreak} day${state.bestStreak === 1 ? '' : 's'}`;
+  // 3. Weekly Completion
+  const weeklyEl = document.getElementById('dashboard-weekly-completion');
+  if (weeklyEl) weeklyEl.textContent = `${weeklyPercent}%`;
+
+  // 4. Monthly Completion
+  const monthlyEl = document.getElementById('dashboard-monthly-completion');
+  if (monthlyEl) monthlyEl.textContent = `${stats.consistency}%`;
 }
 
 // 1. Calendar Grid View
@@ -1091,34 +1125,7 @@ function renderAnalyticsDashboard() {
   if (bestStreakEl) bestStreakEl.textContent = state.bestStreak;
 
   // Calculate Weekly Completion %
-  const today = new Date();
-  const weekStart = new Date(today);
-  const dayOfWeek = weekStart.getDay(); // 0 is Sunday
-  const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
-  weekStart.setDate(diff);
-  weekStart.setHours(0,0,0,0);
-
-  let weeklyExpected = 0;
-  let weeklyCompleted = 0;
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    if (d > today) continue; // Don't count future days in the week
-
-    const dateStr = formatDateString(d);
-    const dayIndex = d.getDay();
-    const activeTasks = state.tasks.filter(t => t.activeDays && t.activeDays.includes(dayIndex));
-    weeklyExpected += activeTasks.length;
-    
-    activeTasks.forEach(t => {
-      if (t.completedDates && t.completedDates.includes(dateStr)) {
-        weeklyCompleted++;
-      }
-    });
-  }
-
-  const weeklyPercent = weeklyExpected === 0 ? 0 : Math.round((weeklyCompleted / weeklyExpected) * 100);
+  const weeklyPercent = getWeeklyCompletionPercent();
   const weeklyEl = document.getElementById('analytics-weekly-percent');
   if (weeklyEl) weeklyEl.textContent = `${weeklyPercent}%`;
 
@@ -1128,6 +1135,7 @@ function renderAnalyticsDashboard() {
   if (monthlyEl) monthlyEl.textContent = `${stats.consistency}%`;
 
   renderHabitHeatmap();
+  renderTrendChart();
 }
 
 function renderHabitHeatmap() {
@@ -1136,10 +1144,8 @@ function renderHabitHeatmap() {
   grid.innerHTML = '';
 
   const today = new Date();
-  // 90 days backwards
   const daysToShow = 90;
   
-  // Create an array of the last 90 dates
   const dates = [];
   for (let i = daysToShow - 1; i >= 0; i--) {
     const d = new Date(today);
@@ -1147,9 +1153,8 @@ function renderHabitHeatmap() {
     dates.push(d);
   }
 
-  // To make a proper 7-row grid where rows are Mon-Sun, we pad the beginning
   const firstDate = dates[0];
-  let emptyCellsStart = firstDate.getDay() - 1; // 0 is Sun, we want Mon=0
+  let emptyCellsStart = firstDate.getDay() - 1;
   if (emptyCellsStart < 0) emptyCellsStart = 6;
   
   for (let i = 0; i < emptyCellsStart; i++) {
@@ -1176,7 +1181,7 @@ function renderHabitHeatmap() {
     let levelClass = '';
     
     if (ratio === 0 && activeTasks.length > 0) {
-      levelClass = ''; // empty bg
+      levelClass = '';
     } else if (ratio > 0 && ratio < 0.5) {
       levelClass = 'level-1';
     } else if (ratio >= 0.5 && ratio < 1) {
@@ -1189,6 +1194,131 @@ function renderHabitHeatmap() {
     cell.className = `heatmap-cell ${levelClass}`;
     cell.title = `${dateStr}: ${completed}/${activeTasks.length} tasks completed`;
     grid.appendChild(cell);
+  });
+}
+
+function renderTrendChart() {
+  const canvas = document.getElementById('analytics-trend-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (window.myTrendChart) {
+    window.myTrendChart.destroy();
+  }
+
+  const today = new Date();
+  const labels = [];
+  const data = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = formatDateString(d);
+    
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = d.getDate();
+    labels.push(`${dayName} ${dayNum}`);
+
+    const active = getActiveTasksForDate(dateStr);
+    const completed = getCompletedTasksForDate(dateStr);
+
+    const percent = active.length === 0 ? 0 : Math.round((completed.length / active.length) * 100);
+    data.push(percent);
+  }
+
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#9a3412';
+  const primaryLightColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-light').trim() || '#c2410c';
+  const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#64748b';
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--card-border').trim() || 'rgba(0, 0, 0, 0.05)';
+
+  const ctx = canvas.getContext('2d');
+  
+  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+  gradient.addColorStop(0, primaryColor + '40');
+  gradient.addColorStop(1, primaryColor + '00');
+
+  window.myTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Completion Rate (%)',
+        data: data,
+        borderColor: primaryColor,
+        borderWidth: 3,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: primaryColor,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointHoverBackgroundColor: primaryLightColor,
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: {
+            family: 'Outfit',
+            size: 14,
+            weight: '600'
+          },
+          bodyFont: {
+            family: 'Outfit',
+            size: 13
+          },
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              return `Completion: ${context.parsed.y}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 100,
+          grid: {
+            color: gridColor,
+            borderDash: [5, 5]
+          },
+          ticks: {
+            color: textMuted,
+            font: {
+              family: 'Outfit',
+              size: 11
+            },
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: textMuted,
+            font: {
+              family: 'Outfit',
+              size: 11
+            }
+          }
+        }
+      }
+    }
   });
 }
 
