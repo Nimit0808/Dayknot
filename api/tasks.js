@@ -37,7 +37,6 @@ module.exports = async function handler(req, res) {
         userId,
         title: task.title,
         priority: task.priority,
-        category: task.category,
         activeDays: task.activeDays,
         createdAt: new Date(),
       });
@@ -51,7 +50,7 @@ module.exports = async function handler(req, res) {
 
       await tasks.updateOne(
         { _id: taskId, userId },
-        { $set: { title: updates.title, priority: updates.priority, category: updates.category, activeDays: updates.activeDays } }
+        { $set: { title: updates.title, priority: updates.priority, activeDays: updates.activeDays } }
       );
       return res.status(200).json({ success: true });
     }

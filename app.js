@@ -3,11 +3,10 @@
 // ==========================================================================
 
 const DEFAULT_TASKS = [
-  // Morning tasks
+  // Routine tasks
   {
     id: 'm1',
     title: 'Hydrate (500ml warm water)',
-    category: 'morning',
     priority: 'high',
     activeDays: [0, 1, 2, 3, 4, 5, 6], // Every day
     completedDates: []
@@ -15,7 +14,6 @@ const DEFAULT_TASKS = [
   {
     id: 'm2',
     title: '10-minute mindfulness meditation',
-    category: 'morning',
     priority: 'medium',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
@@ -23,7 +21,6 @@ const DEFAULT_TASKS = [
   {
     id: 'm3',
     title: 'Plan the day\'s goals & schedule',
-    category: 'morning',
     priority: 'high',
     activeDays: [1, 2, 3, 4, 5], // Weekdays
     completedDates: []
@@ -31,17 +28,13 @@ const DEFAULT_TASKS = [
   {
     id: 'm4',
     title: 'Light stretching or active exercise',
-    category: 'morning',
     priority: 'medium',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
   },
-
-  // Afternoon tasks
   {
     id: 'a1',
     title: 'Deep work focus block (90 mins)',
-    category: 'afternoon',
     priority: 'high',
     activeDays: [1, 2, 3, 4, 5],
     completedDates: []
@@ -49,7 +42,6 @@ const DEFAULT_TASKS = [
   {
     id: 'a2',
     title: 'Post-lunch active walk (15 mins)',
-    category: 'afternoon',
     priority: 'low',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
@@ -57,17 +49,13 @@ const DEFAULT_TASKS = [
   {
     id: 'a3',
     title: 'Inbox zero & communications review',
-    category: 'afternoon',
     priority: 'medium',
     activeDays: [1, 2, 3, 4, 5],
     completedDates: []
   },
-
-  // Evening tasks
   {
     id: 'e1',
     title: 'Journal & reflect on 3 wins',
-    category: 'evening',
     priority: 'medium',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
@@ -75,7 +63,6 @@ const DEFAULT_TASKS = [
   {
     id: 'e2',
     title: 'Prepare layout/bag for tomorrow',
-    category: 'evening',
     priority: 'low',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
@@ -83,7 +70,6 @@ const DEFAULT_TASKS = [
   {
     id: 'e3',
     title: 'Digital detox (no screens 30m before sleep)',
-    category: 'evening',
     priority: 'high',
     activeDays: [0, 1, 2, 3, 4, 5, 6],
     completedDates: []
@@ -1090,7 +1076,6 @@ function handleFormSubmit(e) {
     const newTask = {
       id: 'task_' + Date.now(),
       title,
-      category: 'morning', // Legacy fallback compatibility field
       priority,
       activeDays: checkedDays,
       completedDates: []
@@ -1568,7 +1553,6 @@ async function syncFromCloud() {
         id: t._id,
         title: t.title,
         priority: t.priority,
-        category: t.category || 'morning',
         activeDays: t.activeDays || [0, 1, 2, 3, 4, 5, 6],
         completedDates: cloudCompletions
           .filter(c => c.taskId === t._id)
@@ -1618,7 +1602,7 @@ async function atlasUpdateTask(task) {
     await apiPut('/api/tasks', {
       userId: state.currentUser,
       taskId: task.id,
-      updates: { title: task.title, priority: task.priority, category: task.category, activeDays: task.activeDays },
+      updates: { title: task.title, priority: task.priority, activeDays: task.activeDays },
     });
   } catch (err) {
     console.error('Update task error:', err);
