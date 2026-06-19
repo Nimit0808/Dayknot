@@ -6,6 +6,12 @@
   <title>Dayknot // Monthly Routine & Habit Tracker</title>
   <meta name="description" content="A premium monthly routine checklist and habit tracker featuring calendar views, habit matrices, streaks, and customizable routines.">
   
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FCFAF8" id="meta-theme-color">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -469,6 +475,16 @@
           </div>
         </div>
 
+        <div class="form-row" style="margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+          <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="task-reminder-enabled" style="width: 1.2rem; height: 1.2rem; accent-color: var(--accent);">
+            <label for="task-reminder-enabled" style="margin-bottom: 0; cursor: pointer;">Enable Reminder</label>
+          </div>
+          <div class="form-group" id="task-reminder-time-group" style="margin-bottom: 0; flex: 1; display: none;">
+            <input type="time" id="task-reminder-time" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none;">
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Active Days</label>
           <div class="day-selector">
@@ -622,6 +638,20 @@
   </div>
 
   <!-- JavaScript logic file -->
-  <script defer src="app.js"></script>
+  <script src="app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>

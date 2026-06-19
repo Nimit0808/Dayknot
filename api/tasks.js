@@ -38,6 +38,8 @@ module.exports = async function handler(req, res) {
         title: task.title,
         priority: task.priority,
         activeDays: task.activeDays,
+        reminderEnabled: task.reminderEnabled,
+        reminderTime: task.reminderTime,
         createdAt: new Date(),
       });
       return res.status(200).json({ success: true });
@@ -50,7 +52,14 @@ module.exports = async function handler(req, res) {
 
       await tasks.updateOne(
         { _id: taskId, userId },
-        { $set: { title: updates.title, priority: updates.priority, activeDays: updates.activeDays } }
+        { $set: { 
+            title: updates.title, 
+            priority: updates.priority, 
+            activeDays: updates.activeDays,
+            reminderEnabled: updates.reminderEnabled,
+            reminderTime: updates.reminderTime 
+          } 
+        }
       );
       return res.status(200).json({ success: true });
     }

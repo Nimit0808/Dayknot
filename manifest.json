@@ -1,0 +1,17 @@
+{
+  "name": "Dayknot Tracker",
+  "short_name": "Dayknot",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FCFAF8",
+  "theme_color": "#FCFAF8",
+  "description": "Monthly Routine & Habit Tracker",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

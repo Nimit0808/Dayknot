@@ -113,8 +113,76 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Auto-sync data if logged in
   if (state.currentUser) {
     await syncFromCloud();
+    initReminderEngine();
   }
 });
+
+// ==========================================================================
+// REMINDER ENGINE
+// ==========================================================================
+let reminderIntervalId = null;
+
+function initReminderEngine() {
+  if (reminderIntervalId) clearInterval(reminderIntervalId);
+  
+  if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  // Check every minute
+  reminderIntervalId = setInterval(() => {
+    checkReminders();
+  }, 60000);
+  
+  // Initial check on load
+  checkReminders();
+}
+
+function checkReminders() {
+  if (!state.currentUser || state.tasks.length === 0) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const now = new Date();
+  const currentDayOfWeek = now.getDay();
+  const currentHour = now.getHours().toString().padStart(2, '0');
+  const currentMinute = now.getMinutes().toString().padStart(2, '0');
+  const currentTimeStr = `${currentHour}:${currentMinute}`;
+  
+  const todayStr = getLocalDateString(now);
+
+  // We use localStorage to track if a notification was already sent today for a task
+  // to avoid spamming the user every minute during the reminder time.
+  const notifiedTasksKey = `dayknot_notified_${state.currentUser}_${todayStr}`;
+  let notifiedTasks = [];
+  try {
+    notifiedTasks = JSON.parse(localStorage.getItem(notifiedTasksKey)) || [];
+  } catch(e) {}
+
+  let updatedNotified = false;
+
+  state.tasks.forEach(task => {
+    if (!task.reminderEnabled || !task.reminderTime) return;
+    if (!task.activeDays.includes(currentDayOfWeek)) return;
+    if (task.completedDates.includes(todayStr)) return; // Already done
+    
+    // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
+    if (currentTimeStr === task.reminderTime) {
+      if (!notifiedTasks.includes(task.id)) {
+        // Send notification
+        new Notification("Dayknot Reminder", {
+          body: `It's time to: ${task.title}`,
+          icon: "/icon.svg"
+        });
+        notifiedTasks.push(task.id);
+        updatedNotified = true;
+      }
+    }
+  });
+
+  if (updatedNotified) {
+    localStorage.setItem(notifiedTasksKey, JSON.stringify(notifiedTasks));
+  }
+}
 
 // Load data from LocalStorage
 function loadData() {
@@ -1014,6 +1082,20 @@ const taskForm = document.getElementById('task-form');
 const taskIdInput = document.getElementById('task-id');
 const taskTitleInput = document.getElementById('task-title-input');
 const taskPrioritySelect = document.getElementById('task-priority-select');
+const taskReminderEnabled = document.getElementById('task-reminder-enabled');
+const taskReminderTime = document.getElementById('task-reminder-time');
+const taskReminderTimeGroup = document.getElementById('task-reminder-time-group');
+
+taskReminderEnabled.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    taskReminderTimeGroup.style.display = 'block';
+    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  } else {
+    taskReminderTimeGroup.style.display = 'none';
+  }
+});
 
 function openModal(editingTaskId = null) {
   taskForm.reset();
@@ -1025,6 +1107,16 @@ function openModal(editingTaskId = null) {
     taskIdInput.value = task.id;
     taskTitleInput.value = task.title;
     taskPrioritySelect.value = task.priority;
+    
+    if (task.reminderEnabled) {
+      taskReminderEnabled.checked = true;
+      taskReminderTimeGroup.style.display = 'block';
+      taskReminderTime.value = task.reminderTime || '';
+    } else {
+      taskReminderEnabled.checked = false;
+      taskReminderTimeGroup.style.display = 'none';
+      taskReminderTime.value = '';
+    }
 
     // Check active days checkbox
     const dayCheckboxes = document.querySelectorAll('input[name="active-days"]');
@@ -1035,6 +1127,9 @@ function openModal(editingTaskId = null) {
     modalTitle.textContent = 'Add Routine Task';
     taskIdInput.value = '';
     taskPrioritySelect.value = 'medium';
+    taskReminderEnabled.checked = false;
+    taskReminderTimeGroup.style.display = 'none';
+    taskReminderTime.value = '';
     
     // Check all days by default
     const dayCheckboxes = document.querySelectorAll('input[name="active-days"]');
@@ -1055,7 +1150,10 @@ function handleFormSubmit(e) {
   const id = taskIdInput.value;
   const title = taskTitleInput.value.trim();
   const priority = taskPrioritySelect.value;
-  
+  const reminderEnabled = taskReminderEnabled.checked;
+  const reminderTime = reminderEnabled ? taskReminderTime.value : null;
+
+  if (!title) return;
   const checkedDays = [];
   const dayCheckboxes = document.querySelectorAll('input[name="active-days"]:checked');
   dayCheckboxes.forEach(cb => {
@@ -1074,6 +1172,8 @@ function handleFormSubmit(e) {
       task.title = title;
       task.priority = priority;
       task.activeDays = checkedDays;
+      task.reminderEnabled = reminderEnabled;
+      task.reminderTime = reminderTime;
       atlasUpdateTask(task);
     }
   } else {
@@ -1083,6 +1183,8 @@ function handleFormSubmit(e) {
       title,
       priority,
       activeDays: checkedDays,
+      reminderEnabled,
+      reminderTime,
       completedDates: []
     };
     state.tasks.push(newTask);
@@ -1558,6 +1660,8 @@ async function syncFromCloud() {
         id: t._id,
         title: t.title,
         priority: t.priority,
+        reminderEnabled: t.reminderEnabled,
+        reminderTime: t.reminderTime,
         activeDays: t.activeDays || [0, 1, 2, 3, 4, 5, 6],
         completedDates: cloudCompletions
           .filter(c => c.taskId === t._id)
@@ -1607,7 +1711,13 @@ async function atlasUpdateTask(task) {
     await apiPut('/api/tasks', {
       userId: state.currentUser,
       taskId: task.id,
-      updates: { title: task.title, priority: task.priority, activeDays: task.activeDays },
+      updates: { 
+        title: task.title, 
+        priority: task.priority, 
+        activeDays: task.activeDays,
+        reminderEnabled: task.reminderEnabled,
+        reminderTime: task.reminderTime
+      },
     });
   } catch (err) {
     console.error('Update task error:', err);
