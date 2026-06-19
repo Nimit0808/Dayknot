@@ -657,6 +657,7 @@ body::after {
   gap: 0.75rem;
   padding-top: 0.75rem;
   min-height: 500px;
+  align-content: start;
 }
 
 .calendar-day-cell {
@@ -676,7 +677,7 @@ body::after {
 @media (max-width: 600px) {
   .calendar-day-cell {
     aspect-ratio: 1 / 1;
-    min-height: 60px;
+    min-height: 0;
     padding: 0.4rem;
   }
 }
@@ -1919,6 +1920,7 @@ button svg {
   .calendar-days {
     gap: 0.35rem;
     padding-top: 0.5rem;
+    min-height: 300px;
   }
 
   .calendar-day-cell {
