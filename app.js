@@ -595,7 +595,7 @@ function renderCalendarGrid() {
   // Padding cells from previous month
   for (let i = 0; i < offset; i++) {
     const emptyCell = document.createElement('div');
-    emptyCell.className = 'calendar-day-cell glass empty';
+    emptyCell.className = 'calendar-day-cell empty';
     gridEl.appendChild(emptyCell);
   }
 
@@ -611,7 +611,7 @@ function renderCalendarGrid() {
     const isSelected = cellDateStr === state.selectedDate;
 
     const cellEl = document.createElement('div');
-    cellEl.className = `calendar-day-cell glass`;
+    cellEl.className = `calendar-day-cell`;
     if (isToday) cellEl.classList.add('today');
     if (isSelected) cellEl.classList.add('selected'); // highlighted selection
 
