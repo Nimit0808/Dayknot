@@ -460,6 +460,7 @@ function renderAll() {
   renderHistoryTable();
   renderConfigurationView();
   renderDrawer();
+  renderAnalyticsDashboard();
 }
 
 // Render Monthly Stat Widgets
@@ -1074,6 +1075,121 @@ function deleteTemplateTask(id) {
   saveTasks();
   atlasDeleteTask(id);
   renderAll();
+  renderAll();
+}
+
+// ==========================================================================
+// ANALYTICS DASHBOARD VIEW
+// ==========================================================================
+
+function renderAnalyticsDashboard() {
+  const currentStreak = calculateStreak();
+  const currentStreakEl = document.getElementById('analytics-current-streak');
+  if (currentStreakEl) currentStreakEl.textContent = currentStreak;
+  
+  const bestStreakEl = document.getElementById('analytics-best-streak');
+  if (bestStreakEl) bestStreakEl.textContent = state.bestStreak;
+
+  // Calculate Weekly Completion %
+  const today = new Date();
+  const weekStart = new Date(today);
+  const dayOfWeek = weekStart.getDay(); // 0 is Sunday
+  const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
+  weekStart.setDate(diff);
+  weekStart.setHours(0,0,0,0);
+
+  let weeklyExpected = 0;
+  let weeklyCompleted = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    if (d > today) continue; // Don't count future days in the week
+
+    const dateStr = formatDateString(d);
+    const dayIndex = d.getDay();
+    const activeTasks = state.tasks.filter(t => t.activeDays && t.activeDays.includes(dayIndex));
+    weeklyExpected += activeTasks.length;
+    
+    activeTasks.forEach(t => {
+      if (t.completedDates && t.completedDates.includes(dateStr)) {
+        weeklyCompleted++;
+      }
+    });
+  }
+
+  const weeklyPercent = weeklyExpected === 0 ? 0 : Math.round((weeklyCompleted / weeklyExpected) * 100);
+  const weeklyEl = document.getElementById('analytics-weekly-percent');
+  if (weeklyEl) weeklyEl.textContent = `${weeklyPercent}%`;
+
+  // Calculate Monthly Completion %
+  const stats = getMonthlyStats();
+  const monthlyEl = document.getElementById('analytics-monthly-percent');
+  if (monthlyEl) monthlyEl.textContent = `${stats.consistency}%`;
+
+  renderHabitHeatmap();
+}
+
+function renderHabitHeatmap() {
+  const grid = document.getElementById('heatmap-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const today = new Date();
+  // 90 days backwards
+  const daysToShow = 90;
+  
+  // Create an array of the last 90 dates
+  const dates = [];
+  for (let i = daysToShow - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d);
+  }
+
+  // To make a proper 7-row grid where rows are Mon-Sun, we pad the beginning
+  const firstDate = dates[0];
+  let emptyCellsStart = firstDate.getDay() - 1; // 0 is Sun, we want Mon=0
+  if (emptyCellsStart < 0) emptyCellsStart = 6;
+  
+  for (let i = 0; i < emptyCellsStart; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.style.width = '14px';
+    emptyCell.style.height = '14px';
+    emptyCell.style.background = 'transparent';
+    grid.appendChild(emptyCell);
+  }
+
+  dates.forEach(d => {
+    const dateStr = formatDateString(d);
+    const dayIndex = d.getDay();
+    const activeTasks = state.tasks.filter(t => t.activeDays && t.activeDays.includes(dayIndex));
+    let completed = 0;
+    
+    activeTasks.forEach(t => {
+      if (t.completedDates && t.completedDates.includes(dateStr)) {
+        completed++;
+      }
+    });
+
+    let ratio = activeTasks.length === 0 ? 0 : completed / activeTasks.length;
+    let levelClass = '';
+    
+    if (ratio === 0 && activeTasks.length > 0) {
+      levelClass = ''; // empty bg
+    } else if (ratio > 0 && ratio < 0.5) {
+      levelClass = 'level-1';
+    } else if (ratio >= 0.5 && ratio < 1) {
+      levelClass = 'level-2';
+    } else if (ratio === 1 && activeTasks.length > 0) {
+      levelClass = 'level-3';
+    }
+
+    const cell = document.createElement('div');
+    cell.className = `heatmap-cell ${levelClass}`;
+    cell.title = `${dateStr}: ${completed}/${activeTasks.length} tasks completed`;
+    grid.appendChild(cell);
+  });
 }
 
 // ==========================================================================

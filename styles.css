@@ -1497,6 +1497,8 @@ label {
 }
 
 input[type="text"],
+input[type="email"],
+input[type="password"],
 select {
   font-family: var(--font-main);
   background: var(--input-bg);
@@ -1510,6 +1512,8 @@ select {
 }
 
 input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
 select:focus {
   border-color: var(--input-focus);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
@@ -2161,6 +2165,27 @@ button svg {
   justify-content: center;
   transition: all var(--transition-fast) ease;
 }
+
+/* Heatmap Styles */
+.heatmap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background-color: var(--status-empty-bg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.heatmap-cell.level-1 { background-color: var(--primary-glow); opacity: 0.4; }
+.heatmap-cell.level-2 { background-color: var(--primary-glow); opacity: 0.7; }
+.heatmap-cell.level-3 { background-color: var(--color-primary); }
 
 .btn-sign-out:hover {
   color: var(--color-rose);
