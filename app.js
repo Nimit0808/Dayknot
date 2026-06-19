@@ -1419,6 +1419,75 @@ function setupAuthForm() {
 
   let authMode = 'login';
 
+  // --- Google Identity Services (GIS) ---
+  window.handleGoogleCredentialResponse = async (response) => {
+    const credential = response.credential;
+    if (!credential) return;
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Authenticating...';
+    errorMsg.style.display = 'none';
+
+    try {
+      const res = await apiPost('/api/auth-google', { credential });
+      
+      // Update session logic just like normal login
+      state.currentUser = res.username;
+      
+      const rememberMe = document.getElementById('auth-remember-me');
+      if (rememberMe && rememberMe.checked) {
+        const expiresAt = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
+        localStorage.setItem('dayknot_auth', JSON.stringify({ user: res.username, expiresAt }));
+        sessionStorage.removeItem('dayknot_current_user');
+      } else {
+        sessionStorage.setItem('dayknot_current_user', res.username);
+        localStorage.removeItem('dayknot_auth');
+      }
+
+      usernameInput.value = '';
+      passwordInput.value = '';
+      if (emailInput) emailInput.value = '';
+
+      loadData();
+      updateAuthUI();
+      renderAll();
+      await syncFromCloud();
+    } catch (err) {
+      errorMsg.textContent = err.message || 'Google Sign-In failed';
+      errorMsg.style.display = 'block';
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+    }
+  };
+
+  // Initialize GIS after script load
+  window.onload = async function () {
+    if (window.google) {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        if (config.googleClientId) {
+          google.accounts.id.initialize({
+            client_id: config.googleClientId,
+            callback: handleGoogleCredentialResponse
+          });
+          const googleBtnContainer = document.getElementById('google-btn-container');
+          if (googleBtnContainer) {
+            google.accounts.id.renderButton(
+              googleBtnContainer,
+              { theme: 'outline', size: 'large', width: 250, text: 'continue_with' }
+            );
+          }
+        } else {
+          console.warn('Google Client ID not found in server config.');
+        }
+      } catch (err) {
+        console.error('Failed to load config for Google Sign-In', err);
+      }
+    }
+  };
+
   tabLogin && tabLogin.addEventListener('click', () => {
     authMode = 'login';
     tabLogin.classList.add('active');
@@ -1560,6 +1629,94 @@ function setupAuthForm() {
     }
   });
 
+  // --- Password Reset Flow ---
+  const btnForgotPassword = document.getElementById('btn-forgot-password');
+  const resetRequestForm = document.getElementById('reset-request-form');
+  const btnResetRequestSubmit = document.getElementById('btn-reset-request-submit');
+  const btnResetRequestCancel = document.getElementById('btn-reset-request-cancel');
+  const resetRequestErrorMsg = document.getElementById('reset-request-error-msg');
+  const resetEmailInput = document.getElementById('reset-email');
+
+  const resetPasswordForm = document.getElementById('reset-password-form');
+  const btnResetSubmit = document.getElementById('btn-reset-submit');
+  const btnResetCancel = document.getElementById('btn-reset-cancel');
+  const resetErrorMsg = document.getElementById('reset-error-msg');
+  const resetCodeInput = document.getElementById('reset-code');
+  const resetNewPasswordInput = document.getElementById('reset-new-password');
+
+  btnForgotPassword && btnForgotPassword.addEventListener('click', () => {
+    document.getElementById('auth-form').style.display = 'none';
+    resetRequestForm.style.display = 'block';
+    resetEmailInput.value = '';
+    resetRequestErrorMsg.style.display = 'none';
+  });
+
+  btnResetRequestCancel && btnResetRequestCancel.addEventListener('click', () => {
+    resetRequestForm.style.display = 'none';
+    document.getElementById('auth-form').style.display = 'block';
+  });
+
+  resetRequestForm && resetRequestForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = resetEmailInput.value.trim().toLowerCase();
+    if (!email) return;
+
+    btnResetRequestSubmit.disabled = true;
+    btnResetRequestSubmit.textContent = 'Sending...';
+    resetRequestErrorMsg.style.display = 'none';
+
+    try {
+      await apiPost('/api/password-reset-request', { email });
+      window.pendingResetEmail = email;
+      resetRequestForm.style.display = 'none';
+      resetPasswordForm.style.display = 'block';
+    } catch (err) {
+      resetRequestErrorMsg.textContent = err.message;
+      resetRequestErrorMsg.style.display = 'block';
+    } finally {
+      btnResetRequestSubmit.disabled = false;
+      btnResetRequestSubmit.textContent = 'Send Reset Code';
+    }
+  });
+
+  btnResetCancel && btnResetCancel.addEventListener('click', () => {
+    resetPasswordForm.style.display = 'none';
+    document.getElementById('auth-form').style.display = 'block';
+    resetCodeInput.value = '';
+    resetNewPasswordInput.value = '';
+    resetErrorMsg.style.display = 'none';
+  });
+
+  resetPasswordForm && resetPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = resetCodeInput.value.trim();
+    const newPassword = resetNewPasswordInput.value.trim();
+    const email = window.pendingResetEmail;
+
+    if (!code || !newPassword || !email) return;
+
+    btnResetSubmit.disabled = true;
+    btnResetSubmit.textContent = 'Updating...';
+    resetErrorMsg.style.display = 'none';
+
+    try {
+      const newPasswordHash = await hashPassword(newPassword);
+      await apiPost('/api/password-reset', { email, code, newPasswordHash });
+
+      // Success, go back to login
+      resetPasswordForm.style.display = 'none';
+      document.getElementById('auth-form').style.display = 'block';
+      if (usernameInput) usernameInput.value = email; // pre-fill
+      alert('Password updated successfully. Please sign in with your new password.');
+    } catch (err) {
+      resetErrorMsg.textContent = err.message;
+      resetErrorMsg.style.display = 'block';
+    } finally {
+      btnResetSubmit.disabled = false;
+      btnResetSubmit.textContent = 'Update Password';
+    }
+  });
+
   const performSignOut = () => {
     localStorage.removeItem('dayknot_current_user');
     localStorage.removeItem('dayknot_auth');
@@ -1597,3 +1754,75 @@ function updateAuthUI() {
   }
 }
 
+
+// --- Settings Form ---
+function setupSettingsForm() {
+  const btnSettings = document.getElementById('btn-settings');
+  const userDisplayName = document.getElementById('user-display-name');
+  const settingsModal = document.getElementById('settings-modal');
+  const btnSettingsClose = document.getElementById('settings-modal-close');
+  const btnSettingsCancel = document.getElementById('btn-settings-cancel');
+  const settingsForm = document.getElementById('settings-form');
+  const settingsUsernameInput = document.getElementById('settings-username-input');
+  const btnSettingsSubmit = document.getElementById('btn-settings-submit');
+  const settingsErrorMsg = document.getElementById('settings-error-msg');
+
+  const openSettings = () => {
+    if (!state.currentUser) return;
+    settingsUsernameInput.value = state.currentUser;
+    settingsErrorMsg.style.display = 'none';
+    settingsModal.classList.add('active');
+  };
+
+  const closeSettings = () => {
+    settingsModal.classList.remove('active');
+  };
+
+  btnSettings && btnSettings.addEventListener('click', openSettings);
+  userDisplayName && userDisplayName.addEventListener('click', openSettings);
+  btnSettingsClose && btnSettingsClose.addEventListener('click', closeSettings);
+  btnSettingsCancel && btnSettingsCancel.addEventListener('click', closeSettings);
+
+  settingsForm && settingsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newUsername = settingsUsernameInput.value.trim().toLowerCase();
+    
+    if (!newUsername || newUsername === state.currentUser) {
+      closeSettings();
+      return;
+    }
+
+    btnSettingsSubmit.disabled = true;
+    btnSettingsSubmit.textContent = 'Saving...';
+    settingsErrorMsg.style.display = 'none';
+
+    try {
+      const res = await apiPost('/api/profile', { currentUser: state.currentUser, newUsername }, 'PUT');
+      
+      // Update session storage
+      if (localStorage.getItem('dayknot_auth')) {
+        const currentAuth = JSON.parse(localStorage.getItem('dayknot_auth'));
+        currentAuth.user = res.username;
+        localStorage.setItem('dayknot_auth', JSON.stringify(currentAuth));
+      } else if (sessionStorage.getItem('dayknot_current_user')) {
+        sessionStorage.setItem('dayknot_current_user', res.username);
+      }
+
+      state.currentUser = res.username;
+      updateAuthUI();
+      renderAll();
+      closeSettings();
+    } catch (err) {
+      settingsErrorMsg.textContent = err.message;
+      settingsErrorMsg.style.display = 'block';
+    } finally {
+      btnSettingsSubmit.disabled = false;
+      btnSettingsSubmit.textContent = 'Save Changes';
+    }
+  });
+}
+
+// Ensure this gets called on load
+document.addEventListener('DOMContentLoaded', () => {
+  setupSettingsForm();
+});

@@ -13,6 +13,9 @@
   
   <!-- CSS Styles -->
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <!-- Confetti Canvas -->
@@ -41,8 +44,11 @@
           <label for="auth-username" id="auth-username-label" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Email or Username</label>
           <input type="text" id="auth-username" required placeholder="Enter username or email..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
         </div>
-        <div class="form-group" style="margin-bottom: 1.25rem;">
-          <label for="auth-password" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Password</label>
+        <div class="form-group" style="margin-bottom: 1.25rem; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.35rem;">
+            <label for="auth-password" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); display: block;">Password</label>
+            <button type="button" id="btn-forgot-password" style="font-size: 0.75rem; color: var(--color-primary); background: none; border: none; cursor: pointer; text-decoration: underline;">Forgot Password?</button>
+          </div>
           <input type="password" id="auth-password" required placeholder="Enter password..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
         </div>
         
@@ -54,6 +60,14 @@
         <div id="auth-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
 
         <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Sign In</button>
+        
+        <div id="google-auth-divider" style="display: flex; align-items: center; text-align: center; margin: 1.25rem 0;">
+          <div style="flex: 1; border-bottom: 1px solid var(--card-border);"></div>
+          <span style="padding: 0 10px; font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">OR</span>
+          <div style="flex: 1; border-bottom: 1px solid var(--card-border);"></div>
+        </div>
+
+        <div id="google-btn-container" style="display: flex; justify-content: center; width: 100%;"></div>
       </form>
 
       <!-- Verification Form (Hidden by default) -->
@@ -69,6 +83,38 @@
 
         <button type="submit" id="btn-verify-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Verify Account</button>
         <button type="button" id="btn-verify-cancel" class="btn btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; border: none; background: transparent; color: var(--text-secondary);">Cancel / Back to Login</button>
+      </form>
+
+      <!-- Password Reset Request Form (Hidden by default) -->
+      <form id="reset-request-form" class="auth-form" style="display: none;">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">Enter your email to receive a password reset code.</p>
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="reset-email" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Email Address</label>
+          <input type="email" id="reset-email" required placeholder="Enter your email..." style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+        </div>
+        <div id="reset-request-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+        <button type="submit" id="btn-reset-request-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Send Reset Code</button>
+        <button type="button" id="btn-reset-request-cancel" class="btn btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; border: none; background: transparent; color: var(--text-secondary);">Back to Login</button>
+      </form>
+
+      <!-- Password Reset Form (Hidden by default) -->
+      <form id="reset-password-form" class="auth-form" style="display: none;">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">Enter the 6-digit code sent to your email and your new password.</p>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="reset-code" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Reset Code</label>
+          <input type="text" id="reset-code" required placeholder="123456" maxlength="6" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; letter-spacing: 0.25rem; font-weight: 700; text-align: center; font-size: 1.2rem;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="reset-new-password" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">New Password</label>
+          <input type="password" id="reset-new-password" required placeholder="Enter new password..." style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+        </div>
+        
+        <div id="reset-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+
+        <button type="submit" id="btn-reset-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Update Password</button>
+        <button type="button" id="btn-reset-cancel" class="btn btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; border: none; background: transparent; color: var(--text-secondary);">Cancel</button>
       </form>
 
       <div id="auth-mode-indicator" class="auth-mode-indicator" style="margin-top: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
@@ -110,8 +156,8 @@
       <!-- User Profile Badge (Header Right) -->
       <div class="header-right">
         <div class="user-profile-badge glass">
-          <span class="user-avatar">👤</span>
-          <span id="user-display-name">Guest</span>
+          <span class="user-avatar" id="btn-settings" style="cursor: pointer;" title="Settings">👤</span>
+          <span id="user-display-name" style="cursor: pointer;" title="Settings">Guest</span>
           <button id="btn-sign-out" class="btn-sign-out" title="Sign Out">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -418,6 +464,28 @@
     </div>
   </div>
 
+  <!-- Settings Modal Overlay -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-card glass">
+      <div class="modal-header">
+        <h3 id="settings-modal-title">Profile Settings</h3>
+        <button id="settings-modal-close" class="btn-close">&times;</button>
+      </div>
+      <form id="settings-form">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="settings-username-input">Display Name (Username)</label>
+          <input type="text" id="settings-username-input" required placeholder="Enter new username..." autocomplete="off">
+        </div>
+        
+        <div id="settings-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-settings-cancel" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="btn-settings-submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- JavaScript logic file -->
   <script defer src="app.js"></script>
