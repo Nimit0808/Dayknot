@@ -1568,7 +1568,7 @@ async function syncFromCloud() {
         id: t._id,
         title: t.title,
         priority: t.priority,
-        category: 'morning',
+        category: t.category || 'morning',
         activeDays: t.activeDays || [0, 1, 2, 3, 4, 5, 6],
         completedDates: cloudCompletions
           .filter(c => c.taskId === t._id)
@@ -1590,6 +1590,13 @@ async function pushLocalTasksToCloud() {
   try {
     for (const task of state.tasks) {
       await apiPost('/api/tasks', { userId: state.currentUser, task });
+      
+      // Sync local completions to cloud
+      if (task.completedDates && task.completedDates.length > 0) {
+        for (const dateStr of task.completedDates) {
+          await atlasAddCompletion(task.id, dateStr);
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to push tasks to cloud:', err);
@@ -1611,7 +1618,7 @@ async function atlasUpdateTask(task) {
     await apiPut('/api/tasks', {
       userId: state.currentUser,
       taskId: task.id,
-      updates: { title: task.title, priority: task.priority, activeDays: task.activeDays },
+      updates: { title: task.title, priority: task.priority, category: task.category, activeDays: task.activeDays },
     });
   } catch (err) {
     console.error('Update task error:', err);
