@@ -4,7 +4,7 @@ const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
 async function scheduleOneSignalNotification(userId, title, body, sendAfterStr) {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
     console.warn("OneSignal keys missing, skipping notification");
-    return { error: 'OneSignal Environment Variables are missing! Did you redeploy on Vercel?' };
+    throw new Error('OneSignal Environment Variables are missing! Did you redeploy on Vercel?');
   }
   
   try {
@@ -25,14 +25,15 @@ async function scheduleOneSignalNotification(userId, title, body, sendAfterStr) 
     
     const data = await response.json();
     if (data.id) {
-      return { id: data.id };
+      return data.id; // Return just the string ID
     } else {
+      const errorMsg = data.errors ? data.errors.join(', ') : 'Unknown API error';
       console.error("OneSignal API Error:", data);
-      return { error: data.errors ? data.errors.join(', ') : 'Unknown API error' };
+      throw new Error(errorMsg);
     }
   } catch (err) {
     console.error("Error scheduling OneSignal notification:", err);
-    return { error: err.message };
+    throw err;
   }
 }
 

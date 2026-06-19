@@ -21,10 +21,13 @@
   <link rel="stylesheet" href="styles.css">
   
   <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  
+  <!-- JavaScript logic file -->
+  <script src="app.js" defer></script>
   
   <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" defer></script>
   <!-- OneSignal Web SDK -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
@@ -42,7 +45,7 @@
 </head>
 <body>
   <!-- Confetti Canvas -->
-  <canvas id="confetti-canvas"></canvas>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
 
   <!-- Fullscreen Auth Screen Overlay -->
   <div id="auth-overlay" class="auth-overlay active">
@@ -90,7 +93,7 @@
           <div style="flex: 1; border-bottom: 1px solid var(--card-border);"></div>
         </div>
 
-        <div id="google-btn-container" style="display: flex; justify-content: center; width: 100%;"></div>
+        <div id="google-btn-container" style="display: flex; justify-content: center; width: 100%; min-height: 44px;"></div>
       </form>
 
       <!-- Verification Form (Hidden by default) -->
@@ -152,7 +155,7 @@
     <header class="app-header">
       <div class="header-left">
         <!-- Hamburger Menu Button (visible on mobile only) -->
-        <button id="btn-hamburger" class="btn btn-icon btn-hamburger" title="Open Menu">
+        <button id="btn-hamburger" class="btn btn-icon btn-hamburger" title="Open Menu" aria-label="Open Navigation Menu">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -167,11 +170,11 @@
 
       <!-- Month Navigation Controls -->
       <div class="month-selector-wrapper glass">
-        <button id="btn-prev-month" class="btn-month-nav" title="Previous Month">
+        <button id="btn-prev-month" class="btn-month-nav" title="Previous Month" aria-label="Previous Month">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
         <span id="current-month-display">June 2026</span>
-        <button id="btn-next-month" class="btn-month-nav" title="Next Month">
+        <button id="btn-next-month" class="btn-month-nav" title="Next Month" aria-label="Next Month">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -179,9 +182,9 @@
       <!-- User Profile Badge (Header Right) -->
       <div class="header-right">
         <div class="user-profile-badge glass">
-          <span class="user-avatar" id="btn-settings" style="cursor: pointer;" title="Settings">👤</span>
-          <span id="user-display-name" style="cursor: pointer;" title="Settings">Guest</span>
-          <button id="btn-sign-out" class="btn-sign-out" title="Sign Out">
+          <button class="user-avatar" id="btn-settings" aria-label="Open Settings" style="cursor: pointer; border: none; background: transparent; padding: 0;" title="Settings">👤</button>
+          <button id="user-display-name" aria-label="Open Settings" style="cursor: pointer; border: none; background: transparent; padding: 0; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit;" title="Settings">Guest</button>
+          <button id="btn-sign-out" class="btn-sign-out" title="Sign Out" aria-label="Sign Out">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
@@ -398,7 +401,7 @@
     </main>
 
     <!-- Floating Global Add Button -->
-    <button id="fab-add-task" class="fab-btn" title="Create a new task">
+    <button id="fab-add-task" class="fab-btn" title="Create a new task" aria-label="Create a new task">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </button>
   </div>
@@ -411,7 +414,7 @@
           <h2 id="drawer-date-title">June 13, 2026</h2>
           <p id="drawer-progress-subtitle">0 of 0 tasks completed (0%)</p>
         </div>
-        <button id="drawer-close" class="btn-close" title="Close Drawer">&times;</button>
+        <button id="drawer-close" class="btn-close" title="Close Drawer" aria-label="Close Drawer">&times;</button>
       </div>
 
       <!-- Drawer Progress Bar -->
@@ -433,7 +436,7 @@
     <div class="side-drawer-card glass">
       <div class="side-drawer-header">
         <h2>Dayknot Menu</h2>
-        <button id="side-drawer-close" class="btn-close" title="Close Menu">&times;</button>
+        <button id="side-drawer-close" class="btn-close" title="Close Menu" aria-label="Close Menu">&times;</button>
       </div>
       <div class="side-drawer-content">
         <div class="side-drawer-item active" data-target="calendar-view">
@@ -468,7 +471,7 @@
     <div class="modal-card glass">
       <div class="modal-header">
         <h3 id="modal-title">Create Task</h3>
-        <button id="modal-close" class="btn-close">&times;</button>
+        <button id="modal-close" class="btn-close" aria-label="Close Modal">&times;</button>
       </div>
       <form id="task-form">
         <input type="hidden" id="task-id">
@@ -506,31 +509,31 @@
           <label>Active Days</label>
           <div class="day-selector">
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="1" checked>
+              <input type="checkbox" name="active-days" value="1" aria-label="Monday" checked>
               <span>M</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="2" checked>
+              <input type="checkbox" name="active-days" value="2" aria-label="Tuesday" checked>
               <span>T</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="3" checked>
+              <input type="checkbox" name="active-days" value="3" aria-label="Wednesday" checked>
               <span>W</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="4" checked>
+              <input type="checkbox" name="active-days" value="4" aria-label="Thursday" checked>
               <span>T</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="5" checked>
+              <input type="checkbox" name="active-days" value="5" aria-label="Friday" checked>
               <span>F</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="6" checked>
+              <input type="checkbox" name="active-days" value="6" aria-label="Saturday" checked>
               <span>S</span>
             </label>
             <label class="day-checkbox">
-              <input type="checkbox" name="active-days" value="0" checked>
+              <input type="checkbox" name="active-days" value="0" aria-label="Sunday" checked>
               <span>S</span>
             </label>
           </div>
@@ -550,7 +553,7 @@
       
       <!-- Content Area -->
       <div class="settings-content-area" style="flex: 1; padding: 2rem; overflow-y: auto; position: relative;">
-        <button id="settings-modal-close" class="btn-close" style="position: absolute; top: 1rem; right: 1.5rem;">&times;</button>
+        <button id="settings-modal-close" class="btn-close" aria-label="Close Settings" style="position: absolute; top: 1rem; right: 1.5rem;">&times;</button>
         
         <!-- PROFILE TAB -->
         <div class="settings-pane active" id="settings-pane-profile">
@@ -616,11 +619,11 @@
           <div>
             <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">Accent Color</h4>
             <div style="display: flex; gap: 1rem;">
-              <button type="button" class="accent-btn" data-color="terracotta" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #9a3412; cursor: pointer; border: 2px solid transparent;"></button>
-              <button type="button" class="accent-btn" data-color="rose" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #e11d48; cursor: pointer; border: 2px solid transparent;"></button>
-              <button type="button" class="accent-btn" data-color="emerald" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #10b981; cursor: pointer; border: 2px solid transparent;"></button>
-              <button type="button" class="accent-btn" data-color="violet" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #8b5cf6; cursor: pointer; border: 2px solid transparent;"></button>
-              <button type="button" class="accent-btn" data-color="amber" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #d97706; cursor: pointer; border: 2px solid transparent;"></button>
+              <button type="button" class="accent-btn" data-color="terracotta" aria-label="Terra Cotta Theme" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #9a3412; cursor: pointer; border: 2px solid transparent;"></button>
+              <button type="button" class="accent-btn" data-color="rose" aria-label="Rose Theme" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #e11d48; cursor: pointer; border: 2px solid transparent;"></button>
+              <button type="button" class="accent-btn" data-color="emerald" aria-label="Emerald Theme" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #10b981; cursor: pointer; border: 2px solid transparent;"></button>
+              <button type="button" class="accent-btn" data-color="violet" aria-label="Violet Theme" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #8b5cf6; cursor: pointer; border: 2px solid transparent;"></button>
+              <button type="button" class="accent-btn" data-color="amber" aria-label="Amber Theme" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: #d97706; cursor: pointer; border: 2px solid transparent;"></button>
             </div>
           </div>
         </div>
@@ -655,8 +658,7 @@
   <!-- In-App Toast Notification Container -->
   <div id="toast-container" style="position: fixed; top: 1rem; right: 1rem; left: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;"></div>
 
-  <!-- JavaScript logic file -->
-  <script src="app.js"></script>
+  <!-- JavaScript logic file (Moved to head for performance) -->
 
   <!-- PWA Service Worker Registration -->
   <script>

@@ -1,12 +1,14 @@
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 
-const CACHE_NAME = 'dayknot-cache-v2';
+const CACHE_NAME = 'dayknot-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
   '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
   '/manifest.json'
 ];
 
@@ -57,6 +59,8 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, networkResponse.clone());
         });
         return networkResponse;
+      }).catch((err) => {
+        console.warn('Network request failed, relying on cache: ', err);
       });
       return cachedResponse || fetchPromise;
     })
