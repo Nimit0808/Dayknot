@@ -2247,7 +2247,7 @@ button svg {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  background-color: var(--status-empty-bg);
+  background-color: var(--card-border);
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;

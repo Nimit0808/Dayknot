@@ -2049,20 +2049,7 @@ function setupSettingsForm() {
   userDisplayName && userDisplayName.addEventListener('click', openSettings);
   btnSettingsClose && btnSettingsClose.addEventListener('click', closeSettings);
 
-  // Tab Switching Logic
-  const tabBtns = document.querySelectorAll('.settings-tab-btn');
-  const panes = document.querySelectorAll('.settings-pane');
-  
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      tabBtns.forEach(b => b.classList.remove('active'));
-      panes.forEach(p => p.style.display = 'none');
-      
-      btn.classList.add('active');
-      const targetPane = document.getElementById(`settings-pane-${btn.dataset.tab}`);
-      if (targetPane) targetPane.style.display = 'block';
-    });
-  });
+  // Tab Switching Logic (Removed as all panes are now stacked vertically in one view)
 
   // Init Theme and Accent inputs
   const themeRadios = document.querySelectorAll('input[name="theme-pref"]');

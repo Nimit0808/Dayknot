@@ -343,7 +343,7 @@
           <!-- Heatmap Container -->
           <div class="heatmap-card glass" style="overflow-x: auto;">
             <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span>📅</span> 90-Day Habit Heatmap
+              <span>📅</span> 365-Day Habit Heatmap
             </h3>
             
             <div class="heatmap-container" style="display: flex; gap: 0.5rem;">
@@ -513,18 +513,8 @@
 
   <!-- Advanced Settings Modal Overlay -->
   <div id="settings-modal" class="modal-overlay">
-    <div class="modal-card glass" style="width: 700px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: row; padding: 0; overflow: hidden;">
+    <div class="modal-card glass" style="width: 600px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
       
-      <!-- Sidebar -->
-      <div class="settings-sidebar" style="width: 200px; background: rgba(0,0,0,0.03); border-right: 1px solid var(--card-border); padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; padding-left: 0.5rem;">Settings</h3>
-        <button class="settings-tab-btn active" data-tab="profile">Profile</button>
-        <button class="settings-tab-btn" data-tab="appearance">Appearance</button>
-        <button class="settings-tab-btn" data-tab="security">Security</button>
-        <div style="flex-grow: 1;"></div>
-        <button class="settings-tab-btn danger" data-tab="danger" style="color: var(--color-rose);">Danger Zone</button>
-      </div>
-
       <!-- Content Area -->
       <div class="settings-content-area" style="flex: 1; padding: 2rem; overflow-y: auto; position: relative;">
         <button id="settings-modal-close" class="btn-close" style="position: absolute; top: 1rem; right: 1.5rem;">&times;</button>
@@ -534,7 +524,7 @@
           <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Profile</h3>
           
           <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--card-border);">
-            <div id="settings-avatar-preview" style="width: 80px; height: 80px; border-radius: 50%; background: var(--input-bg); border: 2px dashed var(--card-border); display: flex; align-items: center; justify-content: center; font-size: 2rem; overflow: hidden;">
+            <div id="settings-avatar-preview" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; flex-shrink: 0; border-radius: 50%; background: var(--input-bg); border: 2px dashed var(--card-border); display: flex; align-items: center; justify-content: center; font-size: 2rem; overflow: hidden;">
               👤
             </div>
             <div>
@@ -575,7 +565,7 @@
         </div>
 
         <!-- APPEARANCE TAB -->
-        <div class="settings-pane" id="settings-pane-appearance" style="display: none;">
+        <div class="settings-pane" id="settings-pane-appearance" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">
           <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Appearance</h3>
           
           <div style="margin-bottom: 2rem;">
@@ -603,7 +593,7 @@
         </div>
 
         <!-- SECURITY TAB -->
-        <div class="settings-pane" id="settings-pane-security" style="display: none;">
+        <div class="settings-pane" id="settings-pane-security" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">
           <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Security</h3>
           <form id="settings-password-form">
             <div class="form-group" style="margin-bottom: 0.75rem;">
@@ -620,7 +610,7 @@
         </div>
 
         <!-- DANGER TAB -->
-        <div class="settings-pane" id="settings-pane-danger" style="display: none;">
+        <div class="settings-pane" id="settings-pane-danger" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">
           <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem; color: var(--color-rose);">Danger Zone</h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Once you delete your account, there is no going back. All habits and completions will be permanently wiped from the database.</p>
           <div id="settings-delete-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 500;"></div>
