@@ -1094,8 +1094,8 @@ taskReminderEnabled.addEventListener('change', (e) => {
 });
 
 btnTestNotification.addEventListener('click', async () => {
-  // Always show the in-app toast to prove the reminder works
-  showToastNotification("Test Successful! 🎉", "If you see this, reminders are working correctly.");
+  // Always show the in-app toast
+  showToastNotification("Testing Push...", "Contacting backend...");
 
   let permission = "default";
   if ("Notification" in window) {
@@ -1103,7 +1103,6 @@ btnTestNotification.addEventListener('click', async () => {
   }
   
   if (permission === 'default') {
-    // Show OneSignal prompt if they haven't subscribed yet
     try {
       if (window.OneSignal && window.OneSignal.Slidedown) {
         await window.OneSignal.Slidedown.promptPush();
@@ -1111,32 +1110,37 @@ btnTestNotification.addEventListener('click', async () => {
         await Notification.requestPermission();
       }
     } catch(e) {
-      console.warn("OneSignal prompt failed", e);
+      alert("Error asking for permission: " + e.message);
     }
-    // Return early, as the user is currently interacting with the prompt
-    // They can click the button again after granting permission
+    alert("Please grant notification permissions and then click Test Alert again.");
+    return;
+  }
+
+  if (permission === 'denied') {
+    alert("Notifications are blocked! Please open your browser/app settings and allow notifications for this app.");
     return;
   }
 
   if (permission === 'granted') {
-    if (state.currentUser) {
-      try {
-        const res = await fetch('/api/test-push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: state.currentUser })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'Unknown error');
-        }
-      } catch (err) {
-        console.error("Test push failed", err);
-        alert(`Failed to send test push via backend: ${err.message}`);
-      }
+    if (!state.currentUser) {
+      alert("You must be logged in to test notifications.");
+      return;
     }
-  } else {
-    alert("Native notifications are disabled. Please enable them in your browser/device settings. (The in-app Toast will still work!)");
+    
+    try {
+      const res = await fetch('/api/test-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: state.currentUser })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Unknown error');
+      }
+      showToastNotification("Success", "Backend accepted the test push! You should receive it in 10 seconds.");
+    } catch (err) {
+      alert(`Backend Error: ${err.message}`);
+    }
   }
 });
 
