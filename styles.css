@@ -2292,6 +2292,34 @@ button svg {
   .header-right {
     display: none; /* Hidden on header, moved to sidebar drawer menu */
   }
+
+  /* Settings Modal Mobile Fix */
+  #settings-modal .modal-card {
+    flex-direction: column !important;
+    max-height: 95vh !important;
+  }
+  
+  #settings-modal .settings-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--card-border) !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 0.75rem !important;
+    align-items: center;
+  }
+  
+  #settings-modal .settings-sidebar h3 {
+    display: none !important;
+  }
+  
+  #settings-modal .settings-tab-btn {
+    white-space: nowrap;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  #settings-modal .settings-content-area {
+    padding: 1.5rem 1rem !important;
+  }
 }
-
-
