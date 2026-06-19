@@ -1866,8 +1866,29 @@ button svg {
     min-height: 100px;
   }
 
+  .stat-card {
+    padding: 0.75rem 0.5rem;
+    min-height: 90px;
+  }
+
+  .stat-emoji {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.15rem;
+  }
+
   .stat-main {
-    font-size: 1.75rem;
+    font-size: 1.35rem !important;
+  }
+
+  .stat-label {
+    font-size: 0.65rem !important;
+    letter-spacing: 0.02em;
+  }
+
+  .chart-card, .heatmap-card {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
   }
 
   .calendar-wrapper {
@@ -1886,8 +1907,8 @@ button svg {
 
   .calendar-day-cell {
     aspect-ratio: 1 / 1;
-    min-height: 52px;
-    padding: 0.35rem;
+    min-height: auto;
+    padding: 0.25rem;
     border-radius: 8px;
   }
 
@@ -2203,6 +2224,22 @@ button svg {
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast) ease;
+}
+
+/* Card Container Styles */
+.chart-card, .heatmap-card {
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.heatmap-grid {
+  display: grid !important;
+  grid-template-rows: repeat(7, 14px) !important;
+  grid-auto-flow: column !important;
+  gap: 4px !important;
+  width: max-content;
+  height: 122px;
 }
 
 /* Heatmap Styles */

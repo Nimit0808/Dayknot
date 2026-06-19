@@ -1144,7 +1144,7 @@ function renderHabitHeatmap() {
   grid.innerHTML = '';
 
   const today = new Date();
-  const daysToShow = 90;
+  const daysToShow = 365;
   
   const dates = [];
   for (let i = daysToShow - 1; i >= 0; i--) {
@@ -2121,6 +2121,15 @@ function setupSettingsForm() {
   };
   btnSettings && btnSettings.addEventListener('click', newOpenSettings);
   userDisplayName && userDisplayName.addEventListener('click', newOpenSettings);
+
+  const mobileProfile = document.getElementById('mobile-profile-settings');
+  if (mobileProfile) {
+    mobileProfile.addEventListener('click', () => {
+      const sideNavDrawer = document.getElementById('side-nav-drawer');
+      if (sideNavDrawer) sideNavDrawer.classList.remove('active');
+      newOpenSettings();
+    });
+  }
 
   // Avatar Upload Logic
   const avatarUpload = document.getElementById('settings-avatar-upload');
