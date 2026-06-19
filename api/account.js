@@ -45,11 +45,11 @@ module.exports = async function handler(req, res) {
 
       await users.updateOne({ _id: user._id }, { $set: { username: normalizedNewUsername } });
       
-      // Update completions & habits
+      // Update completions & tasks
       const completions = db.collection('completions');
       await completions.updateMany({ userId: normalizedCurrentUser }, { $set: { userId: normalizedNewUsername } });
-      const habits = db.collection('habits');
-      await habits.updateMany({ userId: normalizedCurrentUser }, { $set: { userId: normalizedNewUsername } });
+      const tasks = db.collection('tasks');
+      await tasks.updateMany({ userId: normalizedCurrentUser }, { $set: { userId: normalizedNewUsername } });
 
       return res.status(200).json({ success: true, username: normalizedNewUsername });
     }
@@ -145,10 +145,10 @@ module.exports = async function handler(req, res) {
     
     else if (action === 'delete_account') {
       const userIdToClear = user.username || normalizedCurrentUser;
-      const habits = db.collection('habits');
+      const tasks = db.collection('tasks');
       const completions = db.collection('completions');
 
-      await habits.deleteMany({ userId: userIdToClear });
+      await tasks.deleteMany({ userId: userIdToClear });
       await completions.deleteMany({ userId: userIdToClear });
       await users.deleteOne({ _id: user._id });
 
