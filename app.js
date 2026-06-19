@@ -1547,7 +1547,7 @@ async function apiPut(path, body) {
 async function syncFromCloud() {
   if (!state.currentUser) return;
   try {
-    const res = await fetch(`/api/sync?userId=${encodeURIComponent(state.currentUser)}`);
+    const res = await fetch(`/api/sync?userId=${encodeURIComponent(state.currentUser)}&_t=${Date.now()}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
