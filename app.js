@@ -1409,6 +1409,9 @@ function setupAuthForm() {
   const tabSignup = document.getElementById('tab-signup');
   const btnSubmit = document.getElementById('btn-auth-submit');
   const errorMsg = document.getElementById('auth-error-msg');
+  const emailGroup = document.getElementById('auth-email-group');
+  const emailInput = document.getElementById('auth-email');
+  const usernameLabel = document.getElementById('auth-username-label');
   const usernameInput = document.getElementById('auth-username');
   const passwordInput = document.getElementById('auth-password');
   const btnSignOut = document.getElementById('btn-sign-out');
@@ -1422,6 +1425,9 @@ function setupAuthForm() {
     tabSignup.classList.remove('active');
     btnSubmit.textContent = 'Sign In';
     errorMsg.style.display = 'none';
+    if (emailGroup) emailGroup.style.display = 'none';
+    if (emailInput) emailInput.required = false;
+    if (usernameLabel) usernameLabel.textContent = 'Email or Username';
   });
 
   tabSignup && tabSignup.addEventListener('click', () => {
@@ -1430,13 +1436,18 @@ function setupAuthForm() {
     tabLogin.classList.remove('active');
     btnSubmit.textContent = 'Create Account';
     errorMsg.style.display = 'none';
+    if (emailGroup) emailGroup.style.display = 'block';
+    if (emailInput) emailInput.required = true;
+    if (usernameLabel) usernameLabel.textContent = 'Display Name (Username)';
   });
 
   form && form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = usernameInput.value.trim().toLowerCase();
     const password = passwordInput.value.trim();
-    if (!username || !password) return;
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+
+    if (!username || !password || (authMode === 'signup' && !email)) return;
 
     btnSubmit.disabled = true;
     btnSubmit.textContent = authMode === 'login' ? 'Signing In…' : 'Creating Account…';
@@ -1444,9 +1455,18 @@ function setupAuthForm() {
 
     try {
       const passwordHash = await hashPassword(password);
-      await apiPost('/api/auth', { action: authMode, username, passwordHash });
+      const res = await apiPost('/api/auth', { action: authMode, username, email, passwordHash });
 
-      state.currentUser = username;
+      if (res.requiresVerification) {
+        document.getElementById('auth-form').style.display = 'none';
+        document.getElementById('verify-form').style.display = 'block';
+        window.pendingVerificationEmail = res.email;
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+        return;
+      }
+
+      state.currentUser = res.username;
       
       const rememberMe = document.getElementById('auth-remember-me');
       if (rememberMe && rememberMe.checked) {
@@ -1455,13 +1475,14 @@ function setupAuthForm() {
         sessionStorage.removeItem('dayknot_current_user');
         localStorage.removeItem('dayknot_current_user');
       } else {
-        sessionStorage.setItem('dayknot_current_user', username);
+        sessionStorage.setItem('dayknot_current_user', res.username);
         localStorage.removeItem('dayknot_auth');
         localStorage.removeItem('dayknot_current_user');
       }
 
       usernameInput.value = '';
       passwordInput.value = '';
+      if (emailInput) emailInput.value = '';
 
       loadData();
       updateAuthUI();
@@ -1475,6 +1496,67 @@ function setupAuthForm() {
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+    }
+  });
+
+  const verifyForm = document.getElementById('verify-form');
+  const btnVerifySubmit = document.getElementById('btn-verify-submit');
+  const verifyErrorMsg = document.getElementById('verify-error-msg');
+  const verifyCodeInput = document.getElementById('verify-code');
+  const btnVerifyCancel = document.getElementById('btn-verify-cancel');
+
+  btnVerifyCancel && btnVerifyCancel.addEventListener('click', () => {
+     document.getElementById('verify-form').style.display = 'none';
+     document.getElementById('auth-form').style.display = 'block';
+     verifyCodeInput.value = '';
+     verifyErrorMsg.style.display = 'none';
+  });
+
+  verifyForm && verifyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = verifyCodeInput.value.trim();
+    const email = window.pendingVerificationEmail;
+    if (!code || !email) return;
+
+    btnVerifySubmit.disabled = true;
+    btnVerifySubmit.textContent = 'Verifying...';
+    verifyErrorMsg.style.display = 'none';
+
+    try {
+      const res = await apiPost('/api/verify', { email, code });
+      
+      state.currentUser = res.username;
+      
+      const rememberMe = document.getElementById('auth-remember-me');
+      if (rememberMe && rememberMe.checked) {
+        const expiresAt = new Date().getTime() + (30 * 24 * 60 * 60 * 1000); // 30 days
+        localStorage.setItem('dayknot_auth', JSON.stringify({ user: res.username, expiresAt }));
+        sessionStorage.removeItem('dayknot_current_user');
+        localStorage.removeItem('dayknot_current_user');
+      } else {
+        sessionStorage.setItem('dayknot_current_user', res.username);
+        localStorage.removeItem('dayknot_auth');
+        localStorage.removeItem('dayknot_current_user');
+      }
+
+      usernameInput.value = '';
+      passwordInput.value = '';
+      if (emailInput) emailInput.value = '';
+      verifyCodeInput.value = '';
+
+      document.getElementById('verify-form').style.display = 'none';
+      document.getElementById('auth-form').style.display = 'block';
+
+      loadData();
+      updateAuthUI();
+      renderAll();
+      await syncFromCloud();
+    } catch (err) {
+      verifyErrorMsg.textContent = err.message;
+      verifyErrorMsg.style.display = 'block';
+    } finally {
+      btnVerifySubmit.disabled = false;
+      btnVerifySubmit.textContent = 'Verify Account';
     }
   });
 

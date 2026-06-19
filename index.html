@@ -33,9 +33,13 @@
       </div>
 
       <form id="auth-form" class="auth-form">
+        <div class="form-group" id="auth-email-group" style="margin-bottom: 1rem; display: none;">
+          <label for="auth-email" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Email Address</label>
+          <input type="email" id="auth-email" placeholder="Enter email..." autocomplete="email" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+        </div>
         <div class="form-group" style="margin-bottom: 1rem;">
-          <label for="auth-username" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Username</label>
-          <input type="text" id="auth-username" required placeholder="Enter username..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
+          <label for="auth-username" id="auth-username-label" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Email or Username</label>
+          <input type="text" id="auth-username" required placeholder="Enter username or email..." autocomplete="off" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; transition: border-color var(--transition-fast);">
         </div>
         <div class="form-group" style="margin-bottom: 1.25rem;">
           <label for="auth-password" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Password</label>
@@ -50,6 +54,21 @@
         <div id="auth-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
 
         <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Sign In</button>
+      </form>
+
+      <!-- Verification Form (Hidden by default) -->
+      <form id="verify-form" class="auth-form" style="display: none;">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">We've sent a 6-digit verification code to your email. Please enter it below.</p>
+        
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="verify-code" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Verification Code</label>
+          <input type="text" id="verify-code" required placeholder="123456" maxlength="6" autocomplete="one-time-code" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); outline: none; letter-spacing: 0.25rem; font-weight: 700; text-align: center; font-size: 1.2rem;">
+        </div>
+        
+        <div id="verify-error-msg" class="auth-error-msg" style="display: none; color: var(--color-rose); font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+
+        <button type="submit" id="btn-verify-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Verify Account</button>
+        <button type="button" id="btn-verify-cancel" class="btn btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: 10px; font-weight: 600; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; border: none; background: transparent; color: var(--text-secondary);">Cancel / Back to Login</button>
       </form>
 
       <div id="auth-mode-indicator" class="auth-mode-indicator" style="margin-top: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
