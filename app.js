@@ -210,7 +210,7 @@ function checkReminders() {
     if (task.completedDates.includes(todayStr)) return; // Already done
     
     // If it's time for the reminder, or past the reminder time but hasn't been notified yet today
-    if (currentTimeStr === task.reminderTime) {
+    if (currentTimeStr >= task.reminderTime) {
       if (!notifiedTasks.includes(task.id)) {
         // ALWAYS show in-app toast
         showToastNotification("Dayknot Reminder", `It's time to: ${task.title}`);
