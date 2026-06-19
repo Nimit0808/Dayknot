@@ -191,7 +191,7 @@ function checkReminders() {
   const currentMinute = now.getMinutes().toString().padStart(2, '0');
   const currentTimeStr = `${currentHour}:${currentMinute}`;
   
-  const todayStr = getLocalDateString(now);
+  const todayStr = formatDateString(now);
 
   // We use localStorage to track if a notification was already sent today for a task
   // to avoid spamming the user every minute during the reminder time.
@@ -1263,6 +1263,16 @@ function handleFormSubmit(e) {
       task.activeDays = checkedDays;
       task.reminderEnabled = reminderEnabled;
       task.reminderTime = reminderTime;
+      
+      // Clear from today's notified list so they can test it again
+      const todayStr = formatDateString(new Date());
+      const notifiedTasksKey = `dayknot_notified_${state.currentUser}_${todayStr}`;
+      try {
+        let notifiedTasks = JSON.parse(localStorage.getItem(notifiedTasksKey)) || [];
+        notifiedTasks = notifiedTasks.filter(id => id !== task.id);
+        localStorage.setItem(notifiedTasksKey, JSON.stringify(notifiedTasks));
+      } catch(e) {}
+      
       atlasUpdateTask(task);
     }
   } else {
