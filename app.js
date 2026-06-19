@@ -1101,14 +1101,24 @@ btnTestNotification.addEventListener('click', async () => {
   if ("Notification" in window) {
     permission = Notification.permission;
   }
-  if (permission === 'granted' || permission === 'default') {
+  
+  if (permission === 'default') {
     // Show OneSignal prompt if they haven't subscribed yet
-    if (window.OneSignal) {
-      await window.OneSignal.Slidedown.promptPush();
+    try {
+      if (window.OneSignal && window.OneSignal.Slidedown) {
+        await window.OneSignal.Slidedown.promptPush();
+      } else if ("Notification" in window) {
+        await Notification.requestPermission();
+      }
+    } catch(e) {
+      console.warn("OneSignal prompt failed", e);
     }
+    // Return early, as the user is currently interacting with the prompt
+    // They can click the button again after granting permission
+    return;
   }
 
-  if (Notification.permission === 'granted') {
+  if (permission === 'granted') {
     if (state.currentUser) {
       try {
         const res = await fetch('/api/test-push', {
