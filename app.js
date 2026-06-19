@@ -125,7 +125,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load data from LocalStorage
 function loadData() {
-  const savedUser = localStorage.getItem('dayknot_current_user');
+  let savedUser = null;
+  
+  const authDataStr = localStorage.getItem('dayknot_auth');
+  if (authDataStr) {
+    try {
+      const authData = JSON.parse(authDataStr);
+      if (authData.expiresAt && new Date().getTime() < authData.expiresAt) {
+        savedUser = authData.user;
+      } else {
+        localStorage.removeItem('dayknot_auth');
+      }
+    } catch (e) {}
+  } else {
+    savedUser = sessionStorage.getItem('dayknot_current_user');
+  }
+
+  if (!savedUser) {
+    const legacyUser = localStorage.getItem('dayknot_current_user');
+    if (legacyUser) {
+      savedUser = legacyUser;
+      sessionStorage.setItem('dayknot_current_user', legacyUser);
+      localStorage.removeItem('dayknot_current_user');
+    }
+  }
+
   state.currentUser = savedUser || null;
 
   // Load tasks specific to the current active user (local cache)
@@ -1423,7 +1447,18 @@ function setupAuthForm() {
       await apiPost('/api/auth', { action: authMode, username, passwordHash });
 
       state.currentUser = username;
-      localStorage.setItem('dayknot_current_user', username);
+      
+      const rememberMe = document.getElementById('auth-remember-me');
+      if (rememberMe && rememberMe.checked) {
+        const expiresAt = new Date().getTime() + (30 * 24 * 60 * 60 * 1000); // 30 days
+        localStorage.setItem('dayknot_auth', JSON.stringify({ user: username, expiresAt }));
+        sessionStorage.removeItem('dayknot_current_user');
+        localStorage.removeItem('dayknot_current_user');
+      } else {
+        sessionStorage.setItem('dayknot_current_user', username);
+        localStorage.removeItem('dayknot_auth');
+        localStorage.removeItem('dayknot_current_user');
+      }
 
       usernameInput.value = '';
       passwordInput.value = '';
@@ -1445,6 +1480,8 @@ function setupAuthForm() {
 
   const performSignOut = () => {
     localStorage.removeItem('dayknot_current_user');
+    localStorage.removeItem('dayknot_auth');
+    sessionStorage.removeItem('dayknot_current_user');
     state.currentUser = null;
     state.tasks = [];
     state.bestStreak = 0;
