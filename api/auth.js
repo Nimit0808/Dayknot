@@ -106,6 +106,80 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, email: user.email, username: user.username || user._id });
     }
 
+    if (action === 'verify') {
+      const { code } = req.body;
+      if (!email || !code) return res.status(400).json({ error: 'Missing email or code' });
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await users.findOne({ email: normalizedEmail });
+
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.verified) return res.status(400).json({ error: 'User already verified' });
+      if (user.verificationCode !== code.trim()) return res.status(401).json({ error: 'Invalid verification code' });
+
+      await users.updateOne(
+        { _id: user._id },
+        { 
+          $set: { verified: true },
+          $unset: { verificationCode: "" }
+        }
+      );
+
+      return res.status(200).json({ success: true, email: user.email, username: user.username || user._id });
+    }
+
+    if (action === 'google') {
+      const { credential } = req.body;
+      if (!credential) return res.status(400).json({ error: 'Missing credential' });
+
+      const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+      if (!googleRes.ok) return res.status(401).json({ error: 'Invalid Google token' });
+
+      const payload = await googleRes.json();
+      
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      if (clientId && payload.aud !== clientId) {
+        return res.status(401).json({ error: 'Token was not issued for this app' });
+      }
+
+      const googleEmail = payload.email.toLowerCase();
+      const name = payload.name;
+      const picture = payload.picture;
+      const googleId = payload.sub;
+
+      let user = await users.findOne({ email: googleEmail });
+
+      if (user) {
+        if (!user.googleId) {
+          await users.updateOne({ _id: user._id }, { $set: { googleId, picture, verified: true } });
+        }
+      } else {
+        let baseUsername = name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        if (!baseUsername) baseUsername = 'user';
+        if (baseUsername.length < 3) baseUsername += '123';
+        
+        let newUsername = baseUsername;
+        let counter = 1;
+        while (await users.findOne({ username: newUsername })) {
+          newUsername = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        user = {
+          email: googleEmail,
+          username: newUsername,
+          googleId,
+          picture,
+          verified: true,
+          createdAt: new Date()
+        };
+        await users.insertOne(user);
+      }
+
+      const returnUsername = user.username || user.email;
+      return res.status(200).json({ success: true, username: returnUsername, email: user.email, picture: user.picture || picture });
+    }
+
     return res.status(400).json({ error: 'Invalid action' });
   } catch (err) {
     console.error('[/api/auth] Error:', err);

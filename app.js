@@ -1429,7 +1429,7 @@ function setupAuthForm() {
     errorMsg.style.display = 'none';
 
     try {
-      const res = await apiPost('/api/auth-google', { credential });
+      const res = await apiPost('/api/auth', { action: 'google', credential });
       
       // Update session logic just like normal login
       state.currentUser = res.username;
@@ -1592,7 +1592,7 @@ function setupAuthForm() {
     verifyErrorMsg.style.display = 'none';
 
     try {
-      const res = await apiPost('/api/verify', { email, code });
+      const res = await apiPost('/api/auth', { action: 'verify', email, code });
       
       state.currentUser = res.username;
       
@@ -1666,7 +1666,7 @@ function setupAuthForm() {
     resetRequestErrorMsg.style.display = 'none';
 
     try {
-      await apiPost('/api/password-reset-request', { email });
+      await apiPost('/api/password', { action: 'reset_request', email });
       window.pendingResetEmail = email;
       resetRequestForm.style.display = 'none';
       resetPasswordForm.style.display = 'block';
@@ -1701,7 +1701,7 @@ function setupAuthForm() {
 
     try {
       const newPasswordHash = await hashPassword(newPassword);
-      await apiPost('/api/password-reset', { email, code, newPasswordHash });
+      await apiPost('/api/password', { action: 'reset', email, code, newPasswordHash });
 
       // Success, go back to login
       resetPasswordForm.style.display = 'none';
@@ -1793,7 +1793,7 @@ function setupSettingsForm() {
     usernameError.style.display = 'none';
 
     try {
-      const res = await apiPost('/api/profile', { currentUser: state.currentUser, newUsername }, 'PUT');
+      const res = await apiPost('/api/account', { action: 'update_username', currentUser: state.currentUser, newUsername });
       if (localStorage.getItem('dayknot_auth')) {
         const currentAuth = JSON.parse(localStorage.getItem('dayknot_auth'));
         currentAuth.user = res.username;
@@ -1830,7 +1830,7 @@ function setupSettingsForm() {
     emailError.style.display = 'none';
 
     try {
-      await apiPost('/api/change-email-request', { currentUser: state.currentUser, newEmail });
+      await apiPost('/api/account', { action: 'change_email_request', currentUser: state.currentUser, newEmail });
       window.pendingSettingsEmail = newEmail;
       emailForm.style.display = 'none';
       emailVerifyForm.style.display = 'block';
@@ -1864,7 +1864,7 @@ function setupSettingsForm() {
     emailVerifyError.style.display = 'none';
 
     try {
-      await apiPost('/api/change-email-verify', { currentUser: state.currentUser, code });
+      await apiPost('/api/account', { action: 'change_email_verify', currentUser: state.currentUser, code });
       alert('Email updated successfully!');
       emailVerifyForm.style.display = 'none';
       emailForm.style.display = 'block';
@@ -1897,7 +1897,7 @@ function setupSettingsForm() {
     try {
       const currentPasswordHash = await hashPassword(currentPassword);
       const newPasswordHash = await hashPassword(newPassword);
-      await apiPost('/api/change-password', { currentUser: state.currentUser, currentPasswordHash, newPasswordHash });
+      await apiPost('/api/account', { action: 'change_password', currentUser: state.currentUser, currentPasswordHash, newPasswordHash });
       
       alert('Password updated successfully!');
       document.getElementById('settings-current-password-input').value = '';
@@ -1924,7 +1924,7 @@ function setupSettingsForm() {
     deleteError.style.display = 'none';
 
     try {
-      await apiDelete('/api/delete-account', { currentUser: state.currentUser });
+      await apiPost('/api/account', { action: 'delete_account', currentUser: state.currentUser });
       
       alert('Your account has been deleted.');
       closeSettings();
