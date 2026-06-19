@@ -222,7 +222,9 @@ function checkReminders() {
                 body: `It's time to: ${task.title}`,
                 icon: "/icon.svg",
                 badge: "/icon.svg"
-              }).catch(() => {});
+              }).catch(() => {
+                try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
+              });
             });
           } else {
             try { new Notification("Dayknot Reminder", { body: `It's time to: ${task.title}`, icon: "/icon.svg" }); } catch(e) {}
@@ -1178,11 +1180,15 @@ btnTestNotification.addEventListener('click', async () => {
         registration.showNotification("Test Successful! 🎉", {
           body: "Native notifications are working.",
           icon: "/icon.svg"
-        }).catch(err => {});
+        }).catch(err => {
+          try { new Notification("Test Successful! 🎉", { body: "Native notifications are working.", icon: "/icon.svg" }); } catch(e) {}
+        });
       });
     } else {
       try { new Notification("Test Successful! 🎉", { body: "Native notifications are working.", icon: "/icon.svg" }); } catch(e) {}
     }
+  } else {
+    alert("Native notifications are disabled. Please enable them in your browser/device settings. (The in-app Toast will still work!)");
   }
 });
 
